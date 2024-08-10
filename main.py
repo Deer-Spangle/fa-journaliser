@@ -27,7 +27,7 @@ class Journal:
     def info(self) -> JournalInfo:
         if self._info is None:
             with open(self.journal_html_filename, "r") as f:
-                self._info = JournalInfo.from_content(f.read())
+                self._info = JournalInfo.from_content(self.journal_id, f.read())
         return self._info
 
     @property
@@ -106,8 +106,14 @@ async def main():
     start_id = 10923887
     start_journal = await download_journal(start_id)
     info = start_journal.info
-    print(f"Page title: {info.page_title()}")
-    raise ValueError("Stop here, just testing")
+    print(f"Page title: {info.page_title}")
+    print(f"System error: {info.is_system_error}")
+    print(f"Journal exists: {info.journal_exists}")
+    print(f"Error message: {info.error_message}")
+    print(f"Title: {info.title}")
+    print(f"Journal posted: {info.posted_at}")
+    sys.exit(1)
+
 
     all_journals = list_downloaded_journals()
     if not all_journals:

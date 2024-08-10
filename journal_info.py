@@ -1,68 +1,72 @@
 import dataclasses
 import datetime
-from functools import lru_cache
+from functools import cached_property
+from typing import Optional
 
-from bs4 import BeautifulSoup
+import dateutil.parser
+import bs4
+
 
 @dataclasses.dataclass
 class JournalInfo:
-    soup: BeautifulSoup
+    journal_id: int
+    soup: bs4.BeautifulSoup
 
     @classmethod
-    def from_content(cls, content: str) -> "JournalInfo":
+    def from_content(cls, journal_id: int, content: str) -> "JournalInfo":
         print(f"Start of content: {content[:50]}")
-        soup = BeautifulSoup(content, "html.parser")
-        return JournalInfo(soup)
+        soup = bs4.BeautifulSoup(content, "html.parser")
+        return JournalInfo(journal_id, soup)
 
-    @lru_cache
+    @cached_property
     def page_title(self) -> str:
         return self.soup.select_one("title").string
 
-    @lru_cache
+    @cached_property
     def is_system_error(self) -> bool:
-        return self.page_title() == "System Error"
+        return self.page_title == "System Error"
 
-    @lru_cache
+    @cached_property
     def journal_exists(self) -> bool:
-        if self.is_system_error():
-            return "you are trying to find is not in our database." in self.error_message()
+        if self.is_system_error:
+            return "you are trying to find is not in our database." in self.error_message
         return False
 
-    @lru_cache
-    def error_message(self) -> str:
-        return self.soup.select_one("table.maintable td.alt1 font").string
+    @cached_property
+    def error_message(self) -> Optional[str]:
+        # TODO: this will be wrong
+        error_elem = self.soup.select_one("table.maintable td.alt1 font")
+        if error_elem:
+            return error_elem.string
+        return None
 
-    @lru_cache
+    @cached_property
+    def content(self) -> bs4.element.Tag:
+        return self.soup.select_one(".content")
+
+    @cached_property
+    def title(self) -> str:
+        return self.content.select_one(".journal-title").string
+
+    @cached_property
     def posted_at(self) -> datetime.datetime:
-        date_elem = self.soup.select_one(".journal-title-box .popup_date")
+        date_elem = self.content.select_one("span.popup_date")
+        if "ago" in date_elem.string:
+            return dateutil.parser.parse(date_elem.attrs["title"])
+        return dateutil.parser.parse(date_elem.string)
 
-"""
-    def stuff(self) -> str:
-        date = pick_date(html.at_css(".journal-title-box .popup_date"))
-        tag.content.include?("ago") ? tag["title"]: tag.content
-
-        profile_url = html.at_css("td.cat .journal-title-box a")["href"][1..-1]
-        journal_header =
-          unless html.at_css(".journal-header").nil?
-            html.at_css(".journal-header").children[0..-3].to_s.strip
-          end
-        journal_footer =
-          unless html.at_css(".journal-footer").nil?
-            html.at_css(".journal-footer").children[2..-1].to_s.strip
-          end
-
-        {
-          title: html.at_css(".journal-title-box .no_overflow").content.gsub(/\A[[:space:]]+|[[:space:]]+\z/, ""),
-          description: html.at_css("td.alt1 div.no_overflow").children.to_s.strip,
-          journal_header: journal_header,
-          journal_body: html.at_css(".journal-body").children.to_s.strip,
-          journal_footer: journal_footer,
-          name: html.at_css("td.cat .journal-title-box a").content,
-          profile: fa_url(profile_url),
-          profile_name: last_path(profile_url),
-          avatar: "https:#{html.at_css("img.avatar")["src"]}",
-          link: fa_url("journal/#{id}/"),
-          posted: date,
-          posted_at: to_iso8601(date)
+    def to_json(self) -> dict:
+        return {
+            "journal_id": self.journal_id,
+            "title": self.title,
+            # "description": html.at_css("td.alt1 div.no_overflow").children.to_s.strip,
+            # "journal_header": journal_header,
+            # "journal_body": html.at_css(".journal-body").children.to_s.strip,
+            # "journal_footer": journal_footer,
+            # "name": html.at_css("td.cat .journal-title-box a").content,
+            # "profile": fa_url(profile_url),
+            # "profile_name": last_path(profile_url),
+            # "avatar": "https:#{html.at_css("img.avatar")["src"]}",
+            "link": f"https://furaffinity.net/journal/{self.journal_id}/",
+            "posted_at": self.posted_at,
         }
-"""
