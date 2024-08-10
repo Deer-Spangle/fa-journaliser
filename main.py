@@ -5,10 +5,11 @@ import logging
 import os
 import pathlib
 import sys
+from collections import Counter
 from logging.handlers import TimedRotatingFileHandler
 from typing import Optional
 
-from journal_info import JournalInfo
+from journal_info import JournalInfo, JournalNotFound, RegisteredUsersOnly, AccountDisabled, PendingDeletion
 
 import aiohttp
 
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 COOKIE_A = ""
 COOKIE_B = ""
+START_JOURNAL = 10_923_887
 
 
 @dataclasses.dataclass
@@ -102,16 +104,51 @@ async def work_backwards(start_journal: Journal) -> None:
         current_journal = next_journal
 
 
-async def main():
-    start_id = 10923887
+def check_downloads() -> None:
+    all_journals = list_downloaded_journals()
+    results = {}
+    for journal in all_journals:
+        logger.info("Journal ID: %s", journal.journal_id)
+        info = journal.info
+        try:
+            info.check_errors()
+        except JournalNotFound:
+            logger.info("Journal deleted")
+            results[journal.journal_id] = "deleted"
+        except AccountDisabled as e:
+            logger.info(f"Account disabled: {e}")
+            results[journal.journal_id] = "account disabled"
+        except PendingDeletion:
+            logger.info("Account pending deletion")
+            results[journal.journal_id] = "pending deletion"
+        except RegisteredUsersOnly:
+            # TODO: delete these, redownload
+            logger.warning("Registered users only error page")
+            results[journal.journal_id] = "registered users only"
+        else:
+            logger.info("Journal title: %s", info.title)
+            results[journal.journal_id] = "Good!"
+    logger.info("DONE!")
+    counter = Counter(results.values())
+    print("RESULTS!")
+    for result, count in counter.most_common():
+        print(f"Result: {result}, count: {count}")
+
+
+async def test_journal() -> None:
+    start_id = START_JOURNAL
     start_journal = await download_journal(start_id)
     info = start_journal.info
     print(f"Page title: {info.page_title}")
     print(f"System error: {info.is_system_error}")
-    print(f"Journal exists: {info.journal_exists}")
+    print(f"Journal deleted: {info.journal_deleted}")
     print(f"Error message: {info.error_message}")
     print(f"Title: {info.title}")
     print(f"Journal posted: {info.posted_at}")
+
+
+async def main():
+    check_downloads()
     sys.exit(1)
 
 
