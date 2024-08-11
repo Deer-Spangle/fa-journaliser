@@ -28,21 +28,28 @@ class PendingDeletion(Exception):
     pass
 
 
+class DataIncomplete(Exception):
+    pass
+
+
 @dataclasses.dataclass
 class JournalInfo:
     journal_id: int
     soup: bs4.BeautifulSoup
+    raw_content: str
 
     @classmethod
     def from_content(cls, journal_id: int, content: str) -> "JournalInfo":
         soup = bs4.BeautifulSoup(content, "html.parser")
-        return JournalInfo(journal_id, soup)
+        return JournalInfo(journal_id, soup, content)
 
     @cached_property
     def page_title(self) -> str:
         return self.soup.select_one("title").string
 
     def check_errors(self) -> None:
+        if "</html>" not in self.raw_content:
+            raise DataIncomplete()
         if self.journal_deleted:
             raise JournalNotFound()
         if self.is_system_error:
