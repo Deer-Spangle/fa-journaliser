@@ -4,8 +4,9 @@ import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
 
+from fa_journaliser.database import Database
 from fa_journaliser.download import run_download
-from fa_journaliser.utils import check_downloads
+from fa_journaliser.utils import check_downloads, import_downloads
 
 logger = logging.getLogger(__name__)
 
@@ -27,5 +28,7 @@ if __name__ == "__main__":
     file_handler.setFormatter(formatter)
     base_logger.addHandler(file_handler)
     # Run the bot
-    check_downloads()
-    asyncio.run(run_download())
+    db = Database()
+    asyncio.run(db.start())
+    asyncio.run(import_downloads(db))
+    sys.exit(0)
