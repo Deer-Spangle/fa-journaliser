@@ -2,7 +2,6 @@ import glob
 import logging
 from collections import Counter
 
-from fa_journaliser.download import download_journal
 from fa_journaliser.journal_info import JournalNotFound, AccountDisabled, PendingDeletion, RegisteredUsersOnly
 from fa_journaliser.journey import Journal
 
@@ -51,14 +50,3 @@ def check_downloads() -> None:
     print("RESULTS!")
     for result, count in counter.most_common():
         print(f"Result: {result}, count: {count}")
-
-
-async def test_journal(journal_id: int) -> None:
-    start_journal = await download_journal(journal_id)
-    info = start_journal.info
-    print(f"Page title: {info.page_title}")
-    print(f"System error: {info.is_system_error}")
-    print(f"Journal deleted: {info.journal_deleted}")
-    print(f"Error message: {info.error_message}")
-    print(f"Title: {info.title}")
-    print(f"Journal posted: {info.posted_at}")

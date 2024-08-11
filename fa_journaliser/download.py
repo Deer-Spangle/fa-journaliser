@@ -65,3 +65,14 @@ async def run_download():
     task_fwd = asyncio.create_task(work_forwards(newest))
     task_bkd = asyncio.create_task(work_backwards(oldest))
     await asyncio.gather(task_fwd, task_bkd)
+
+
+async def test_download(journal_id: int) -> None:
+    start_journal = await download_journal(journal_id)
+    info = start_journal.info
+    print(f"Page title: {info.page_title}")
+    print(f"System error: {info.is_system_error}")
+    print(f"Journal deleted: {info.journal_deleted}")
+    print(f"Error message: {info.error_message}")
+    print(f"Title: {info.title}")
+    print(f"Journal posted: {info.posted_at}")
