@@ -1,4 +1,6 @@
 import dataclasses
+import datetime
+import os.path
 import pathlib
 from typing import Optional
 
@@ -8,6 +10,7 @@ from fa_journaliser.journal_info import JournalInfo
 @dataclasses.dataclass
 class Journal:
     journal_id: int
+    archive_date: datetime.datetime
     _info: Optional[JournalInfo] = dataclasses.field(default=None)
 
     @property
@@ -33,6 +36,8 @@ class Journal:
         if not file_name.endswith(".html"):
             raise ValueError(f"Journal file {file_name} does not end with .html")
         file_id = file_name.removesuffix(".html")
+        archive_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
         return Journal(
-            int(file_id)
+            int(file_id),
+            archive_time,
         )
