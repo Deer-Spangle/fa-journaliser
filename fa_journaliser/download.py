@@ -4,7 +4,7 @@ import logging
 
 import aiohttp
 
-from fa_journaliser.journey import Journal
+from fa_journaliser.journal import Journal
 from fa_journaliser.utils import list_downloaded_journals
 
 logger = logging.getLogger(__name__)

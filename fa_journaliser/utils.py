@@ -3,7 +3,7 @@ import logging
 from collections import Counter
 
 from fa_journaliser.journal_info import JournalNotFound, AccountDisabled, PendingDeletion, RegisteredUsersOnly
-from fa_journaliser.journey import Journal
+from fa_journaliser.journal import Journal
 
 
 logger = logging.getLogger(__name__)
