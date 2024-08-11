@@ -58,8 +58,8 @@ class JournalInfo:
             raise RegisteredUsersOnly()
         if self.account_disabled_username:
             raise AccountDisabled(f"Account disabled: {self.account_disabled_username}")
-        if self.pending_deletion:
-            raise PendingDeletion()
+        if self.pending_deletion_by:
+            raise PendingDeletion(f"Pending deletion from {self.pending_deletion_by}")
 
     @cached_property
     def is_system_error(self) -> bool:
@@ -102,15 +102,20 @@ class JournalInfo:
         return None
 
     @cached_property
-    def pending_deletion(self) -> bool:
+    def pending_deletion_by(self) -> Optional[str]:
         notice_message = self.site_content.select_one("section.notice-message")
         if notice_message is None:
-            return False
+            return None
         redirect = notice_message.select_one("p.link-override")
         if redirect is None:
-            return False
+            return None
         deletion_msg = "The page you are trying to reach is currently pending deletion by a request from its owner."
-        return deletion_msg in redirect.strings
+        if deletion_msg in redirect.stripped_strings:
+            return "its owner"
+        deletion_msg = "The page you are trying to reach is currently pending deletion by a request from the administration."
+        if deletion_msg in redirect.stripped_strings:
+            return "the administration"
+        return None
 
     @cached_property
     def error_message(self) -> Optional[str]:
