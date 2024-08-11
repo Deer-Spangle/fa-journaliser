@@ -129,6 +129,10 @@ def check_downloads() -> None:
         else:
             logger.info("Journal title: %s", info.title)
             results[journal.journal_id] = "Good!"
+        if len(results) % 100 == 0:
+            counter = Counter(results.values())
+            print(f"RESULTS UPDATE: {len(results)}")
+            print(counter.most_common())
     logger.info("DONE!")
     counter = Counter(results.values())
     print("RESULTS!")
