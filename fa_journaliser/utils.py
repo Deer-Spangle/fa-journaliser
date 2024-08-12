@@ -39,7 +39,7 @@ async def check_downloads() -> None:
             logger.info("Account pending deletion")
             results[journal.journal_id] = "pending deletion"
         except RegisteredUsersOnly:
-            # TODO: delete these, redownload
+            # Any of these should be deleted
             logger.warning("Registered users only error page")
             results[journal.journal_id] = "registered users only"
         else:
