@@ -5,6 +5,7 @@ import logging
 from typing import Optional
 
 import aiofiles
+import aiofiles.os
 import aiohttp
 
 from fa_journaliser.database import Database
@@ -13,6 +14,8 @@ from fa_journaliser.journal_info import JournalInfo
 from fa_journaliser.utils import list_downloaded_journals
 
 logger = logging.getLogger(__name__)
+
+BATCH_SIZE = 10
 
 
 async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> Journal:
@@ -47,34 +50,48 @@ async def download_and_save(db: Database, journal_id: int, cookies: dict) -> Jou
     return journal
 
 
-async def work_forwards(start_journal: Journal, backup_cookies: dict) -> None:
+async def download_many(journal_ids: list[int], cookies: dict) -> list[Journal]:
+    return list(await asyncio.gather(*[
+        download_journal_with_backup_cookies(journal_id, cookies) for journal_id in journal_ids
+    ]))
+
+
+async def save_many(journals: list[Journal], db: Database) -> None:
+    await asyncio.gather(*[journal.save(db) for journal in journals])
+
+
+async def work_forwards(db: Database, start_journal: Journal, backup_cookies: dict) -> None:
     logger.info("Working forwards from %s, this is tricky.", start_journal)
-    # TODO: needs to actually detect system error pages.
-    logger.critical("Aborting work forwards, due to known bug")
-    return
-    last_known_good = start_journal
-    current_journal = start_journal
+    last_good_id = start_journal.journal_id
     while True:
-        next_id = current_journal.journal_id + 1
-        logger.info("Attempting to download new journal %s", next_id)
-        next_journal = await download_and_save(next_id, backup_cookies)
-        logger.info("Downloaded new journal %s", next_journal)
-        last_known_good = next_journal
-        current_journal = next_journal
+        next_batch = list(range(last_good_id + 1, last_good_id + BATCH_SIZE + 1))
+        logger.info("Attempting to download new journals %s", next_batch)
+        next_journals = await download_many(next_batch, backup_cookies)
+        next_infos = list(await asyncio.gather(*[j.info() for j in next_journals]))
+        good_journals = [next_journals[i] for i, info in enumerate(next_infos) if not info.journal_deleted]
+        if len(good_journals) == 0:
+            logger.warning("Didn't get any good new journals in that batch! Gonna wait and retry")
+            await asyncio.sleep(10)
+            continue
+        await save_many(good_journals, db)
+        good_ids = [j.journal_id for j in good_journals]
+        logger.info("Downloaded new journals: %s", good_ids)
+        last_good_id = max(good_ids)
 
 
-async def work_backwards(start_journal: Journal, backup_cookies: dict) -> None:
+async def work_backwards(db: Database, start_journal: Journal, backup_cookies: dict) -> None:
     logger.info("Working backwards from %s. I have the easy job", start_journal)
     current_journal = start_journal
     while True:
-        next_id = current_journal.journal_id - 1
-        if next_id < 0:
+        next_batch = list(range(max(0, current_journal.journal_id - BATCH_SIZE), current_journal.journal_id))
+        if len(next_batch) == 0:
             logger.critical("Working backwards is complete! Wow")
             return
-        logger.info("Attempting to download old journal %s", next_id)
-        next_journal = await download_and_save(next_id, backup_cookies)
-        logger.info("Downloaded old journal %s", next_journal)
-        current_journal = next_journal
+        logger.info("Attempting to download old journal batch %s", next_batch)
+        next_journals = await download_many(next_batch, backup_cookies)
+        await save_many(next_journals, db)
+        logger.info("Downloaded old journals %s", next_batch)
+        current_journal = min(next_journals, key=lambda x: x.journal_id)
 
 
 async def run_download(db: Database, backup_cookies: dict) -> None:
@@ -85,8 +102,8 @@ async def run_download(db: Database, backup_cookies: dict) -> None:
         all_journals = [start_journal]
     newest = all_journals[-1]
     oldest = all_journals[0]
-    task_fwd = asyncio.create_task(work_forwards(newest, backup_cookies))
-    task_bkd = asyncio.create_task(work_backwards(oldest, backup_cookies))
+    task_fwd = asyncio.create_task(work_forwards(db, newest, backup_cookies))
+    task_bkd = asyncio.create_task(work_backwards(db, oldest, backup_cookies))
     await asyncio.gather(task_fwd, task_bkd)
 
 
