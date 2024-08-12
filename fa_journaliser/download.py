@@ -104,4 +104,5 @@ async def fill_gaps(db: Database, backup_cookies: dict) -> None:
             logger.info("Found missing journal ID: %s, downloading", missing_id)
             journal = await download_journal_with_backup_cookies(missing_id, backup_cookies)
             await journal.save(db)
+        prev_id = next_id
     logger.info("DONE!")
