@@ -1,10 +1,15 @@
 import dataclasses
 import datetime
+import json
+import logging
 import os.path
 import pathlib
 from typing import Optional
 
-from fa_journaliser.journal_info import JournalInfo
+from fa_journaliser.database import Database
+from fa_journaliser.journal_info import JournalInfo, JournalNotFound, AccountDisabled, PendingDeletion
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -41,3 +46,35 @@ class Journal:
             int(file_id),
             archive_time,
         )
+
+    async def save(
+            self,
+            db: Database
+    ) -> None:
+        info = self.info
+        journal_id = self.journal_id
+        is_deleted = False
+        archive_date = self.archive_date
+        error = None
+        login_used = info.login_user
+        json_data = None
+
+        logger.info("Saving journal ID: %s", journal_id)
+        try:
+            info.check_errors()
+        except JournalNotFound:
+            is_deleted = True
+            error = "Journal not found"
+            logger.info("Journal not found")
+        except AccountDisabled as e:
+            is_deleted = True
+            error = str(e)
+            logger.info(f"Account disabled: {e}")
+        except PendingDeletion as e:
+            is_deleted = True
+            error = str(e)
+            logger.info(f"Account pending deletion: {e}")
+        else:
+            json_data = json.dumps(self.info.to_json())
+            logger.info("Journal title: %s", info.title)
+        await db.add_entry(journal_id, is_deleted, archive_date, error, login_used, json_data)
