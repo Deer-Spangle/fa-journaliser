@@ -39,6 +39,10 @@ class Journal:
         thousands = (self.journal_id - 1_000_000 * millions) // 1_000
         return pathlib.Path("store") / str(millions).zfill(2) / str(thousands).zfill(3) / f"{self.journal_id}.html"
 
+    @property
+    def journal_link(self) -> str:
+        return f"https://furaffinity.net/journal/{self.journal_id}"
+
     def __repr__(self) -> str:
         return f"Journal(id={self.journal_id})"
 
@@ -65,7 +69,7 @@ class Journal:
         login_used = info.login_user
         json_data = None
 
-        logger.info("Saving journal ID: %s", journal_id)
+        logger.info("Saving journal link: %s", self.journal_link)
         try:
             info.check_errors()
         except JournalNotFound:
