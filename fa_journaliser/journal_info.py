@@ -156,14 +156,33 @@ class JournalInfo:
             return dateutil.parser.parse(date_elem.attrs["title"])
         return dateutil.parser.parse(date_elem.string)
 
+    @cached_property
+    def journal_header(self) -> Optional[str]:
+        header_elem = self.content.select_one(".journal-header")
+        if header_elem is None:
+            return None
+        return header_elem.decode_contents().strip()
+
+    @cached_property
+    def journal_content(self) -> str:
+        content_elem = self.content.select_one(".journal-content")
+        return content_elem.decode_contents().strip()
+
+    @cached_property
+    def journal_footer(self) -> Optional[str]:
+        footer_elem = self.content.select_one(".journal-footer")
+        if footer_elem is None:
+            return None
+        return footer_elem.decode_contents().strip()
+
     def to_json(self) -> dict:
         return {
             "journal_id": self.journal_id,
             "title": self.title,
-            # "description": html.at_css("td.alt1 div.no_overflow").children.to_s.strip,
-            # "journal_header": journal_header,
-            # "journal_body": html.at_css(".journal-body").children.to_s.strip,
-            # "journal_footer": journal_footer,
+            "journal_header": self.journal_header,
+            "journal_body": self.journal_content,
+            "journal_footer": self.journal_footer,
+            # TODO
             # "name": html.at_css("td.cat .journal-title-box a").content,
             # "profile": fa_url(profile_url),
             # "profile_name": last_path(profile_url),

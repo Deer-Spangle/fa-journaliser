@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 import os
 import logging
 from typing import Optional
@@ -136,6 +137,8 @@ async def test_download(journal_id: int) -> None:
     print(f"Error message: {info.error_message}")
     print(f"Title: {info.title}")
     print(f"Journal posted: {info.posted_at}")
+    print("Journal JSON:")
+    print(json.dumps(info.to_json(), indent=2))
 
 
 async def fill_gaps(db: Database, backup_cookies: dict) -> None:
