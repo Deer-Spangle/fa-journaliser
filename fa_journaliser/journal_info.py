@@ -156,5 +156,5 @@ class JournalInfo:
             # "profile_name": last_path(profile_url),
             # "avatar": "https:#{html.at_css("img.avatar")["src"]}",
             "link": f"https://furaffinity.net/journal/{self.journal_id}/",
-            "posted_at": self.posted_at,
+            "posted_at": self.posted_at.isoformat(),
         }
