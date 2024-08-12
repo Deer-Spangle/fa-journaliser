@@ -19,12 +19,12 @@ def list_downloaded_journals() -> list[Journal]:
     return sorted(journals, key=lambda journal: journal.journal_id)
 
 
-def check_downloads() -> None:
+async def check_downloads() -> None:
     all_journals = list_downloaded_journals()
     results = {}
     for journal in all_journals:
         logger.info("Journal ID: %s", journal.journal_id)
-        info = journal.info
+        info = await journal.info()
         try:
             info.check_errors()
         except JournalNotFound:

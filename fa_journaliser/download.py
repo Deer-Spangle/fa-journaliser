@@ -4,11 +4,12 @@ import os
 import logging
 from typing import Optional
 
+import aiofiles
 import aiohttp
 
 from fa_journaliser.database import Database
 from fa_journaliser.journal import Journal
-from fa_journaliser.journal_info import RegisteredUsersOnly, JournalInfo
+from fa_journaliser.journal_info import JournalInfo
 from fa_journaliser.utils import list_downloaded_journals
 
 logger = logging.getLogger(__name__)
@@ -21,19 +22,21 @@ async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> J
     async with session.get(journal_url) as resp:
         resp.raise_for_status()
         filename = journal.journal_html_filename
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        dirname = os.path.dirname(filename)
+        await aiofiles.os.makedirs(dirname, exist_ok=True)
         content = b""
-        with open(filename, "wb") as f:
+        async with aiofiles.open(filename, "wb") as f:
             async for chunk in resp.content.iter_chunked(8192):
                 content += chunk
-                f.write(chunk)
+                await f.write(chunk)
         journal._info = JournalInfo.from_content_bytes(journal_id, content)
         return journal
 
 
 async def download_journal_with_backup_cookies(journal_id: int, cookies: dict) -> Journal:
     journal = await download_journal(journal_id)
-    if journal.info.account_private:
+    info = await journal.info()
+    if info.account_private:
         journal = await download_journal(journal_id, cookies)
     return journal
 
@@ -83,7 +86,7 @@ async def run_download():
 
 async def test_download(journal_id: int) -> None:
     start_journal = await download_journal(journal_id)
-    info = start_journal.info
+    info = await start_journal.info()
     print(f"Page title: {info.page_title}")
     print(f"System error: {info.is_system_error}")
     print(f"Journal deleted: {info.journal_deleted}")
