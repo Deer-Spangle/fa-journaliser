@@ -31,10 +31,10 @@ async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> J
 
 
 async def download_journal_with_backup_cookies(journal_id: int, cookies: dict) -> Journal:
-    try:
-        return await download_journal(journal_id)
-    except RegisteredUsersOnly:
-        return await download_journal(journal_id, cookies)
+    journal = await download_journal(journal_id)
+    if journal.info.account_private:
+        journal = await download_journal(journal_id, cookies)
+    return journal
 
 
 async def work_forwards(start_journal: Journal) -> None:
