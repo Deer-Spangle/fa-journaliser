@@ -58,11 +58,6 @@ async def import_downloads(db: Database) -> None:
     all_journals = list_downloaded_journals()
     for journal in all_journals:
         journal_id = journal.journal_id
-        is_deleted = False
-        archive_date = journal.archive_date
-        error = None
-        login_used = None
-        json_data = None
 
         logger.info("Journal ID: %s", journal_id)
         try:
