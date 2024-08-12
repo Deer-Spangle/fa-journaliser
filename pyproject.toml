@@ -10,8 +10,9 @@ readme = "README.md"
 python = "^3.12"
 requests = "^2.32.3"
 beautifulsoup4 = "^4.12.3"
-aiohttp = "^3.10.2"
+aiohttp = "^3.10.3"
 aiosqlite = "^0.20.0"
+python-dateutil = "^2.9.0.post0"
 
 
 [build-system]
