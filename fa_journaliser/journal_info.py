@@ -77,6 +77,8 @@ class JournalInfo:
 
     @cached_property
     def account_private(self) -> bool:
+        if self.site_content is None:
+            return False
         notice_message = self.site_content.select_one("section.notice-message")
         if notice_message is None:
             return False
