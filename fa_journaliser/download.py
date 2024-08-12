@@ -122,10 +122,9 @@ async def run_download(db: Database, backup_cookies: dict) -> None:
         all_journals = [start_journal]
     newest = all_journals[-1]
     oldest = all_journals[0]
-    # task_fwd = asyncio.create_task(work_forwards(db, newest, backup_cookies))
+    task_fwd = asyncio.create_task(work_forwards(db, newest, backup_cookies))
     task_bkd = asyncio.create_task(work_backwards(db, oldest, backup_cookies))
-    await task_bkd
-    # await asyncio.gather(task_fwd, task_bkd)
+    await asyncio.gather(task_fwd, task_bkd)
 
 
 async def test_download(journal_id: int) -> None:
