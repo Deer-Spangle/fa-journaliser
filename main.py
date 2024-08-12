@@ -1,11 +1,12 @@
 import asyncio
+import json
 import logging
 import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
 
 from fa_journaliser.database import Database
-from fa_journaliser.download import run_download
+from fa_journaliser.download import run_download, fill_gaps
 from fa_journaliser.utils import check_downloads, import_downloads
 
 logger = logging.getLogger(__name__)
@@ -25,14 +26,13 @@ if __name__ == "__main__":
     file_handler = TimedRotatingFileHandler("logs/fa_search_bot.log", when="midnight")
     file_handler.setFormatter(formatter)
     base_logger.addHandler(file_handler)
+    # Load config
+    with open("config.json", "r") as f:
+        conf = json.load(f)
     # Run the bot
     db = Database()
     asyncio.run(db.start())
-    asyncio.run(import_downloads(db))
-    # TODO: import downloads
-    # TODO: implement download with cookies
-    # TODO: fill gaps
-    # TODO: async all the file operations
+    asyncio.run(run_download(db, conf["fa_cookies"]))
     # TODO: Make work forwards work
     # TODO: Make work backwards try using cookies
     sys.exit(0)
