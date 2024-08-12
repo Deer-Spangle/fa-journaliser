@@ -39,6 +39,10 @@ class JournalInfo:
     raw_content: str
 
     @classmethod
+    def from_content_bytes(cls, journal_id: int, content: bytes) -> "JournalInfo":
+        return cls.from_content(journal_id, content.decode("utf-8", "backslashreplace"))
+
+    @classmethod
     def from_content(cls, journal_id: int, content: str) -> "JournalInfo":
         soup = bs4.BeautifulSoup(content, "html.parser")
         return JournalInfo(journal_id, soup, content)

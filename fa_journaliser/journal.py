@@ -17,8 +17,8 @@ class Journal:
     def info(self) -> JournalInfo:
         if self._info is None:
             with open(self.journal_html_filename, "rb") as f:
-                content = f.read().decode("utf-8", errors="backslashreplace")
-                self._info = JournalInfo.from_content(self.journal_id, content)
+                content = f.read()
+                self._info = JournalInfo.from_content_bytes(self.journal_id, content)
         return self._info
 
     @property
