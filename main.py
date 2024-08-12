@@ -10,8 +10,6 @@ from fa_journaliser.utils import check_downloads, import_downloads
 
 logger = logging.getLogger(__name__)
 
-COOKIE_A = ""
-COOKIE_B = ""
 START_JOURNAL = 10_923_887
 
 
@@ -31,4 +29,10 @@ if __name__ == "__main__":
     db = Database()
     asyncio.run(db.start())
     asyncio.run(import_downloads(db))
+    # TODO: import downloads
+    # TODO: implement download with cookies
+    # TODO: fill gaps
+    # TODO: async all the file operations
+    # TODO: Make work forwards work
+    # TODO: Make work backwards try using cookies
     sys.exit(0)
