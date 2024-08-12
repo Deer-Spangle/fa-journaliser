@@ -33,4 +33,5 @@ if __name__ == "__main__":
     db = Database()
     asyncio.run(db.start())
     asyncio.run(run_download(db, conf["fa_cookies"]))
+    # TODO: populate all the rows missing journal body and author and stuff
     sys.exit(0)
