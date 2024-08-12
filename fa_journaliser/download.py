@@ -41,7 +41,13 @@ async def download_journal_with_backup_cookies(journal_id: int, cookies: dict) -
     return journal
 
 
-async def work_forwards(start_journal: Journal) -> None:
+async def download_and_save(db: Database, journal_id: int, cookies: dict) -> Journal:
+    journal = await download_journal_with_backup_cookies(journal_id, cookies)
+    await journal.save(db)
+    return journal
+
+
+async def work_forwards(start_journal: Journal, backup_cookies: dict) -> None:
     logger.info("Working forwards from %s, this is tricky.", start_journal)
     # TODO: needs to actually detect system error pages.
     logger.critical("Aborting work forwards, due to known bug")
@@ -51,13 +57,13 @@ async def work_forwards(start_journal: Journal) -> None:
     while True:
         next_id = current_journal.journal_id + 1
         logger.info("Attempting to download new journal %s", next_id)
-        next_journal = await download_journal(next_id)
+        next_journal = await download_and_save(next_id, backup_cookies)
         logger.info("Downloaded new journal %s", next_journal)
         last_known_good = next_journal
         current_journal = next_journal
 
 
-async def work_backwards(start_journal: Journal) -> None:
+async def work_backwards(start_journal: Journal, backup_cookies: dict) -> None:
     logger.info("Working backwards from %s. I have the easy job", start_journal)
     current_journal = start_journal
     while True:
@@ -66,21 +72,21 @@ async def work_backwards(start_journal: Journal) -> None:
             logger.critical("Working backwards is complete! Wow")
             return
         logger.info("Attempting to download old journal %s", next_id)
-        next_journal = await download_journal(next_id)
+        next_journal = await download_and_save(next_id, backup_cookies)
         logger.info("Downloaded old journal %s", next_journal)
         current_journal = next_journal
 
 
-async def run_download():
+async def run_download(db: Database, backup_cookies: dict) -> None:
     all_journals = list_downloaded_journals()
     if not all_journals:
         start_id = 10923887
-        start_journal = await download_journal(start_id)
+        start_journal = await download_and_save(db, start_id, backup_cookies)
         all_journals = [start_journal]
     newest = all_journals[-1]
     oldest = all_journals[0]
-    task_fwd = asyncio.create_task(work_forwards(newest))
-    task_bkd = asyncio.create_task(work_backwards(oldest))
+    task_fwd = asyncio.create_task(work_forwards(newest, backup_cookies))
+    task_bkd = asyncio.create_task(work_backwards(oldest, backup_cookies))
     await asyncio.gather(task_fwd, task_bkd)
 
 
@@ -105,7 +111,6 @@ async def fill_gaps(db: Database, backup_cookies: dict) -> None:
             continue
         for missing_id in range(prev_id+1, next_id):
             logger.info("Found missing journal ID: %s, downloading", missing_id)
-            journal = await download_journal_with_backup_cookies(missing_id, backup_cookies)
-            await journal.save(db)
+            await download_and_save(db, missing_id, backup_cookies)
         prev_id = next_id
     logger.info("DONE!")
