@@ -36,7 +36,7 @@ class Database:
             "INSERT INTO journals (journal_id, is_deleted, archive_datetime, error, login_used, json) "
             "VALUES (?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(journal_id) DO UPDATE SET "
-            "is_deleted = ?, error = ?, login_used = ?, json_data = ?",
+            "is_deleted = ?, error = ?, login_used = ?, json = ?",
             (
                 journal_id, is_deleted, archive_date, error, login_used, json_data,
                 is_deleted, error, login_used, json_data
