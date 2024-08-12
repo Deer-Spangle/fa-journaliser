@@ -1,7 +1,8 @@
 import glob
 import logging
-import os
 from collections import Counter
+
+import aiofiles.os
 
 from fa_journaliser.database import Database
 from fa_journaliser.journal_info import JournalNotFound, AccountDisabled, PendingDeletion, RegisteredUsersOnly
@@ -64,6 +65,6 @@ async def import_downloads(db: Database) -> None:
             await journal.save(db)
         except RegisteredUsersOnly:
             logger.warning("Registered users only error page. Deleting")
-            os.remove(journal.journal_html_filename)
+            await aiofiles.os.remove(journal.journal_html_filename)
             continue
     logger.info("DONE!")
