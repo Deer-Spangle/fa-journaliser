@@ -98,14 +98,18 @@ async def work_backwards(db: Database, start_journal: Journal, backup_cookies: d
     logger.info("Working backwards from %s. I have the easy job", start_journal)
     current_journal = start_journal
     while True:
+        # Figure out next batch
         next_batch = list(range(max(0, current_journal.journal_id - BATCH_SIZE), current_journal.journal_id))
+        # If batch is empty, we're done
         if len(next_batch) == 0:
             logger.critical("Working backwards is complete! Wow")
             return
+        # Download next batch
         logger.info("Attempting to download old journal batch %s", next_batch)
         next_journals = await download_many(next_batch, backup_cookies)
         await save_many(next_journals, db)
         logger.info("Downloaded old journals %s", next_batch)
+        # Figure out next ID to start from
         current_journal = min(next_journals, key=lambda x: x.journal_id)
 
 
@@ -117,9 +121,9 @@ async def run_download(db: Database, backup_cookies: dict) -> None:
         all_journals = [start_journal]
     newest = all_journals[-1]
     oldest = all_journals[0]
-    task_fwd = asyncio.create_task(work_forwards(db, newest, backup_cookies))
-    await task_fwd
-    # task_bkd = asyncio.create_task(work_backwards(db, oldest, backup_cookies))
+    # task_fwd = asyncio.create_task(work_forwards(db, newest, backup_cookies))
+    task_bkd = asyncio.create_task(work_backwards(db, oldest, backup_cookies))
+    await task_bkd
     # await asyncio.gather(task_fwd, task_bkd)
 
 
