@@ -11,7 +11,7 @@ import aiohttp
 from fa_journaliser.database import Database
 from fa_journaliser.journal import Journal
 from fa_journaliser.journal_info import JournalInfo
-from fa_journaliser.utils import list_downloaded_journals
+from fa_journaliser.utils import list_downloaded_journals, split_list
 
 logger = logging.getLogger(__name__)
 
@@ -60,23 +60,38 @@ async def save_many(journals: list[Journal], db: Database) -> None:
     await asyncio.gather(*[journal.save(db) for journal in journals])
 
 
+async def delete_many(journals: list[Journal]) -> None:
+    await asyncio.gather(*[aiofiles.os.remove(j.journal_html_filename) for j in journals])
+
+
 async def work_forwards(db: Database, start_journal: Journal, backup_cookies: dict) -> None:
     logger.info("Working forwards from %s, this is tricky.", start_journal)
     last_good_id = start_journal.journal_id
     while True:
+        # Figure out next batch of IDs to try
         next_batch = list(range(last_good_id + 1, last_good_id + BATCH_SIZE + 1))
         logger.info("Attempting to download new journals %s", next_batch)
+        # Download the next batch
         next_journals = await download_many(next_batch, backup_cookies)
+        # Figure out which ones exist
         next_infos = list(await asyncio.gather(*[j.info() for j in next_journals]))
         good_journals = [next_journals[i] for i, info in enumerate(next_infos) if not info.journal_deleted]
+        # If none of these journals exist, then wait and try again
         if len(good_journals) == 0:
             logger.warning("Didn't get any good new journals in that batch! Gonna wait and retry")
             await asyncio.sleep(10)
             continue
-        await save_many(good_journals, db)
+        # Convert to list of IDs and figure which is the bleeding edge newest journal
         good_ids = [j.journal_id for j in good_journals]
-        logger.info("Downloaded new journals: %s", good_ids)
         last_good_id = max(good_ids)
+        # Figure out which were before the bleeding edge and which are after
+        split_on_last_good = split_list(next_journals, lambda j: j.journal_id <= last_good_id)
+        await asyncio.gather(
+            save_many(split_on_last_good[True], db),
+            delete_many(split_on_last_good[False])
+        )
+        saved_ids = [j.journal_id for j in split_on_last_good[True]]
+        logger.info("Downloaded new journals: (%s) %s", len(saved_ids), saved_ids)
 
 
 async def work_backwards(db: Database, start_journal: Journal, backup_cookies: dict) -> None:
@@ -103,8 +118,9 @@ async def run_download(db: Database, backup_cookies: dict) -> None:
     newest = all_journals[-1]
     oldest = all_journals[0]
     task_fwd = asyncio.create_task(work_forwards(db, newest, backup_cookies))
-    task_bkd = asyncio.create_task(work_backwards(db, oldest, backup_cookies))
-    await asyncio.gather(task_fwd, task_bkd)
+    await task_fwd
+    # task_bkd = asyncio.create_task(work_backwards(db, oldest, backup_cookies))
+    # await asyncio.gather(task_fwd, task_bkd)
 
 
 async def test_download(journal_id: int) -> None:

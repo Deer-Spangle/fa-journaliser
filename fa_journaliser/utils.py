@@ -1,6 +1,7 @@
 import glob
 import logging
 from collections import Counter
+from typing import Callable, TypeVar
 
 import aiofiles.os
 
@@ -68,3 +69,13 @@ async def import_downloads(db: Database) -> None:
             await aiofiles.os.remove(journal.journal_html_filename)
             continue
     logger.info("DONE!")
+
+
+T = TypeVar("T")
+
+
+def split_list(seq: list[T], condition: Callable[[T], bool]) -> dict[bool, list[T]]:
+    result = {True: [], False: []}
+    for item in seq:
+        result[condition(item)].append(item)
+    return result
