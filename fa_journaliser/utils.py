@@ -1,5 +1,4 @@
 import glob
-import json
 import logging
 import os
 from collections import Counter
@@ -66,27 +65,10 @@ async def import_downloads(db: Database) -> None:
         json_data = None
 
         logger.info("Journal ID: %s", journal_id)
-        info = journal.info
         try:
-            info.check_errors()
-        except JournalNotFound:
-            is_deleted = True
-            error = "Journal not found"
-            logger.info("Journal not found")
-        except AccountDisabled as e:
-            is_deleted = True
-            error = str(e)
-            logger.info(f"Account disabled: {e}")
-        except PendingDeletion as e:
-            is_deleted = True
-            error = str(e)
-            logger.info(f"Account pending deletion: {e}")
+            await journal.save(db)
         except RegisteredUsersOnly:
             logger.warning("Registered users only error page. Deleting")
             os.remove(journal.journal_html_filename)
             continue
-        else:
-            json_data = json.dumps(journal.info.to_json())
-            logger.info("Journal title: %s", info.title)
-        await db.add_entry(journal_id, is_deleted, archive_date, error, login_used, json_data)
     logger.info("DONE!")
