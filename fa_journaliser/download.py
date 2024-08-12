@@ -6,6 +6,7 @@ from typing import Optional
 
 import aiohttp
 
+from fa_journaliser.database import Database
 from fa_journaliser.journal import Journal
 from fa_journaliser.journal_info import RegisteredUsersOnly, JournalInfo
 from fa_journaliser.utils import list_downloaded_journals
@@ -89,3 +90,18 @@ async def test_download(journal_id: int) -> None:
     print(f"Error message: {info.error_message}")
     print(f"Title: {info.title}")
     print(f"Journal posted: {info.posted_at}")
+
+
+async def fill_gaps(db: Database, backup_cookies: dict) -> None:
+    all_journals = list_downloaded_journals()
+    prev_id: Optional[int] = None
+    for journal in all_journals:
+        next_id = journal.journal_id
+        if prev_id is None:
+            prev_id = next_id
+            continue
+        for missing_id in range(prev_id+1, next_id):
+            logger.info("Found missing journal ID: %s, downloading", missing_id)
+            journal = await download_journal_with_backup_cookies(missing_id, backup_cookies)
+            await journal.save(db)
+    logger.info("DONE!")
