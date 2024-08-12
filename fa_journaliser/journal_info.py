@@ -129,6 +129,13 @@ class JournalInfo:
         return None
 
     @cached_property
+    def login_user(self) -> Optional[str]:
+        if self.soup.select_one("form.logout-link") is None:
+            return None
+        avatar = self.soup.select_one("img.loggedin_user_avatar")
+        return avatar.attrs["alt"]
+
+    @cached_property
     def site_content(self) -> bs4.element.Tag:
         return self.soup.select_one("#site-content")
 
