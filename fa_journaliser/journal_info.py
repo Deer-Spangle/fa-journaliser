@@ -175,6 +175,36 @@ class JournalInfo:
             return None
         return footer_elem.decode_contents().strip()
 
+    @cached_property
+    def userpage_nav_header(self) -> Optional[bs4.element.Tag]:
+        if self.site_content is None:
+            return None
+        return self.site_content.select_one("userpage-nav-header")
+
+    @cached_property
+    def author_display_name(self) -> Optional[str]:
+        if self.userpage_nav_header is None:
+            return None
+        username_elem = self.userpage_nav_header.select_one("username")
+        display_name = "".join(username_elem.stripped_strings)
+        display_name = display_name.lstrip("~∞!")
+        return display_name
+
+    @cached_property
+    def author_username(self) -> Optional[str]:
+        if self.userpage_nav_header is None:
+            return None
+        return self.userpage_nav_header.select_one("userpage-nav-avatar img").attrs["alt"]
+
+    @cached_property
+    def author_avatar(self) -> Optional[str]:
+        if self.userpage_nav_header is None:
+            return None
+        avatar_url = self.userpage_nav_header.select_one("userpage-nav-avatar img").attrs["src"]
+        if avatar_url.startswith("//"):
+            avatar_url = f"https{avatar_url}"
+        return avatar_url
+
     def to_json(self) -> dict:
         return {
             "journal_id": self.journal_id,
@@ -182,11 +212,12 @@ class JournalInfo:
             "journal_header": self.journal_header,
             "journal_body": self.journal_content,
             "journal_footer": self.journal_footer,
-            # TODO
-            # "name": html.at_css("td.cat .journal-title-box a").content,
-            # "profile": fa_url(profile_url),
-            # "profile_name": last_path(profile_url),
-            # "avatar": "https:#{html.at_css("img.avatar")["src"]}",
+            "author": {
+                "display_name": self.author_display_name,
+                "username": self.author_username,
+                "avatar": self.author_avatar,
+            },
+            # TODO: comments
             "link": f"https://furaffinity.net/journal/{self.journal_id}/",
             "posted_at": self.posted_at.isoformat(),
         }
