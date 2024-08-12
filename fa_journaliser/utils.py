@@ -1,6 +1,7 @@
 import glob
 import json
 import logging
+import os
 from collections import Counter
 
 from fa_journaliser.database import Database
@@ -81,8 +82,9 @@ async def import_downloads(db: Database) -> None:
             error = str(e)
             logger.info(f"Account pending deletion: {e}")
         except RegisteredUsersOnly:
-            # TODO: delete these, redownload
-            logger.warning("Registered users only error page")
+            logger.warning("Registered users only error page. Deleting")
+            os.remove(journal.journal_html_filename)
+            continue
         else:
             json_data = json.dumps(journal.info.to_json())
             logger.info("Journal title: %s", info.title)
