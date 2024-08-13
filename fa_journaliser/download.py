@@ -16,7 +16,7 @@ from fa_journaliser.utils import list_downloaded_journals, split_list
 
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = 10
+BATCH_SIZE = 5
 
 
 async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> Journal:
