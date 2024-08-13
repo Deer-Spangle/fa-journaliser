@@ -46,6 +46,9 @@ class Journal:
     def __repr__(self) -> str:
         return f"Journal(id={self.journal_id})"
 
+    async def is_downloaded(self) -> bool:
+        return await aiofiles.os.path.exists(self.journal_html_filename)
+
     @classmethod
     def from_file_path(cls, file_path: str) -> "Journal":
         file_name = pathlib.Path(file_path).name
