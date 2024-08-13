@@ -23,6 +23,10 @@ class Database:
         );""")
         await self.db.commit()
 
+    async def stop(self) -> None:
+        if self.db is not None:
+            await self.db.close()
+
     async def add_entry(
             self,
             journal_id: int,
