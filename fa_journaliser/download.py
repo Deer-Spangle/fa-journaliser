@@ -121,10 +121,9 @@ async def work_backwards(db: Database, start_journal: Journal, backup_cookies: d
         current_journal = min(next_journals, key=lambda x: x.journal_id)
 
 
-async def run_download(db: Database, backup_cookies: dict) -> None:
+async def run_download(db: Database, backup_cookies: dict, start_id: int) -> None:
     all_journals = list_downloaded_journals()
     if not all_journals:
-        start_id = 10923887
         start_journal = await download_and_save(db, start_id, backup_cookies)
         all_journals = [start_journal]
     newest = all_journals[-1]
