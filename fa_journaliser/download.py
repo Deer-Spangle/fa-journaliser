@@ -134,9 +134,9 @@ async def run_download(db: Database, backup_cookies: dict) -> None:
     await asyncio.gather(task_fwd, task_bkd)
 
 
-async def test_download(journal_id: int) -> None:
-    start_journal = await download_journal(journal_id)
-    info = await start_journal.info()
+async def test_download(journal_id: int, db: Database) -> None:
+    journal = await download_journal(journal_id)
+    info = await journal.info()
     print(f"Page title: {info.page_title}")
     print(f"System error: {info.is_system_error}")
     print(f"Journal deleted: {info.journal_deleted}")
@@ -145,6 +145,7 @@ async def test_download(journal_id: int) -> None:
     print(f"Journal posted: {info.posted_at}")
     print("Journal JSON:")
     print(json.dumps(info.to_json(), indent=2))
+    await journal.save(db)
 
 
 async def fill_gaps(db: Database, backup_cookies: dict) -> None:
