@@ -51,6 +51,13 @@ async def download_and_save(db: Database, journal_id: int, cookies: dict) -> Jou
     return journal
 
 
+async def download_if_not_exists(db: Database, journal_id: int, cookies: dict) -> Journal:
+    journal = Journal(journal_id)
+    if await journal.is_downloaded():
+        return journal
+    return await download_and_save(db, journal_id, cookies)
+
+
 async def download_many(journal_ids: list[int], cookies: dict) -> list[Journal]:
     return list(await asyncio.gather(*[
         download_journal_with_backup_cookies(journal_id, cookies) for journal_id in journal_ids
