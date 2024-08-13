@@ -72,13 +72,19 @@ async def delete_many(journals: list[Journal]) -> None:
     await asyncio.gather(*[aiofiles.os.remove(j.journal_html_filename) for j in journals])
 
 
-async def work_forwards(db: Database, start_journal: Journal, backup_cookies: dict, max_id: Optional[int] = None) -> None:
+async def work_forwards(
+        db: Database,
+        start_journal: Journal,
+        backup_cookies: dict,
+        max_id: Optional[int] = None,
+        batch_size: int = BATCH_SIZE,
+) -> None:
     logger.info("Working forwards from %s, this is tricky.", start_journal)
     last_good_id = start_journal.journal_id
     while True:
         # Figure out next batch of IDs to try
         batch_start = last_good_id + 1
-        batch_end = last_good_id + BATCH_SIZE + 1
+        batch_end = last_good_id + batch_size + 1
         if max_id is not None:
             batch_end = min(batch_end, max_id)
         next_batch = list(range(batch_start, batch_end))
@@ -110,12 +116,18 @@ async def work_forwards(db: Database, start_journal: Journal, backup_cookies: di
         logger.info("Downloaded new journals: (%s) %s", len(saved_ids), saved_ids)
 
 
-async def work_backwards(db: Database, start_journal: Journal, backup_cookies: dict, min_id: int = 0) -> None:
+async def work_backwards(
+        db: Database,
+        start_journal: Journal,
+        backup_cookies: dict,
+        min_id: int = 0,
+        batch_size: int = BATCH_SIZE,
+) -> None:
     logger.info("Working backwards from %s. I have the easy job", start_journal)
     current_journal = start_journal
     while True:
         # Figure out next batch
-        batch_start = max(min_id, current_journal.journal_id - BATCH_SIZE)
+        batch_start = max(min_id, current_journal.journal_id - batch_size)
         batch_end = current_journal.journal_id
         next_batch = list(range(batch_start, batch_end))
         # If batch is empty, we're done
@@ -137,6 +149,8 @@ async def run_download(
         start_id: Optional[int] = None,
         min_id: int = 0,
         max_id: Optional[int] = None,
+        forward_batch_size: int = BATCH_SIZE,
+        backward_batch_size: int = BATCH_SIZE,
 ) -> None:
     # List all current journals
     all_journals = list_downloaded_journals()
@@ -162,8 +176,8 @@ async def run_download(
     newest = all_journals[-1]
     oldest = all_journals[0]
     # Work forward and backwards
-    task_fwd = asyncio.create_task(work_forwards(db, newest, backup_cookies, max_id))
-    task_bkd = asyncio.create_task(work_backwards(db, oldest, backup_cookies, min_id))
+    task_fwd = asyncio.create_task(work_forwards(db, newest, backup_cookies, max_id, forward_batch_size))
+    task_bkd = asyncio.create_task(work_backwards(db, oldest, backup_cookies, min_id, backward_batch_size))
     await asyncio.gather(task_fwd, task_bkd)
 
 

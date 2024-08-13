@@ -16,6 +16,7 @@ from fa_journaliser.utils import check_downloads, import_downloads
 logger = logging.getLogger(__name__)
 
 START_JOURNAL = 10_923_887
+DEFAULT_BATCH_SIZE = 5
 
 
 def setup_logging() -> None:
@@ -104,11 +105,42 @@ def cmd_import_downloads(ctx: AppContext) -> None:
 )
 @click.option("--min-journal", "--min", type=int, help="The ID of the oldest journal to download", default=0)
 @click.option("--max-journal", "--max", type=int, help="The ID of the newest journal to download", default=None)
+@click.option(
+    "--batch-size",
+    type=int,
+    help="How many downloads to do at once in both directions",
+    default=DEFAULT_BATCH_SIZE,
+)
+@click.option(
+    "--forward-batch-size",
+    type=int,
+    help="How many downloads to do at once working forwards",
+    default=None,
+)
+@click.option(
+    "--backward-batch-size",
+    type=int,
+    help="How many downloads to do at once working backwards",
+    default=None,
+)
 @click.pass_context
-def cmd_run_download(ctx: AppContext, start_journal: int, max_journal: Optional[int], min_journal: int) -> None:
+def cmd_run_download(
+        ctx: AppContext,
+        start_journal: int,
+        max_journal: Optional[int],
+        min_journal: int,
+        batch_size: int,
+        forward_batch_size: Optional[int],
+        backward_batch_size: Optional[int],
+) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
+    # Setup batch sizes
+    if forward_batch_size is None:
+        forward_batch_size = batch_size
+    if backward_batch_size is None:
+        backward_batch_size = batch_size
     # Run downloader
     asyncio.run(run_download(
         db,
@@ -116,6 +148,8 @@ def cmd_run_download(ctx: AppContext, start_journal: int, max_journal: Optional[
         start_id=start_journal,
         min_id=min_journal,
         max_id=max_journal,
+        forward_batch_size=forward_batch_size,
+        backward_batch_size=backward_batch_size,
     ))
 
 
@@ -131,8 +165,9 @@ def cmd_run_download(ctx: AppContext, start_journal: int, max_journal: Optional[
     default=START_JOURNAL,
 )
 @click.option("--max-journal", "--max", type=int, help="The ID of the newest journal to download", default=None)
+@click.option("--batch-size", type=int, help="How many downloads to do at once", default=DEFAULT_BATCH_SIZE)
 @click.pass_context
-def cmd_work_forwards(ctx: AppContext, start_journal: int, max_journal: Optional[int]) -> None:
+def cmd_work_forwards(ctx: AppContext, start_journal: int, max_journal: Optional[int], batch_size: int) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
@@ -143,7 +178,8 @@ def cmd_work_forwards(ctx: AppContext, start_journal: int, max_journal: Optional
         db,
         journal,
         cookies,
-        max_id=max_journal
+        max_id=max_journal,
+        batch_size=batch_size,
     ))
 
 
@@ -159,8 +195,9 @@ def cmd_work_forwards(ctx: AppContext, start_journal: int, max_journal: Optional
     default=START_JOURNAL,
 )
 @click.option("--min-journal", "--min", type=int, help="The ID of the oldest journal to download", default=0)
+@click.option("--batch-size", type=int, help="How many downloads to do at once", default=DEFAULT_BATCH_SIZE)
 @click.pass_context
-def cmd_work_backwards(ctx: AppContext, start_journal: int, min_journal: int) -> None:
+def cmd_work_backwards(ctx: AppContext, start_journal: int, min_journal: int, batch_size: int) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
@@ -172,6 +209,7 @@ def cmd_work_backwards(ctx: AppContext, start_journal: int, min_journal: int) ->
         journal,
         cookies,
         min_id=min_journal,
+        batch_size=batch_size,
     ))
 
 
