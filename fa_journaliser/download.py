@@ -82,6 +82,7 @@ async def work_forwards(
     logger.info("Working forwards from %s, this is tricky.", start_journal)
     last_good_id = start_journal.journal_id
     while True:
+        await asyncio.sleep(2)
         # Figure out next batch of IDs to try
         batch_start = last_good_id + 1
         batch_end = last_good_id + batch_size + 1
@@ -101,7 +102,7 @@ async def work_forwards(
         # If none of these journals exist, then wait and try again
         if len(good_journals) == 0:
             logger.warning("Didn't get any good new journals in that batch! Gonna wait and retry")
-            await asyncio.sleep(10)
+            await asyncio.sleep(30)
             continue
         # Convert to list of IDs and figure which is the bleeding edge newest journal
         good_ids = [j.journal_id for j in good_journals]
