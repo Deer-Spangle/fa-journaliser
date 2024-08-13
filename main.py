@@ -4,9 +4,13 @@ import logging
 import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
+from typing import TypedDict
+
+import click
 
 from fa_journaliser.database import Database
-from fa_journaliser.download import run_download, fill_gaps
+from fa_journaliser.download import run_download, fill_gaps, test_download, work_forwards, \
+    download_if_not_exists, work_backwards
 from fa_journaliser.utils import check_downloads, import_downloads
 
 logger = logging.getLogger(__name__)
@@ -14,7 +18,7 @@ logger = logging.getLogger(__name__)
 START_JOURNAL = 10_923_887
 
 
-if __name__ == "__main__":
+def setup_logging() -> None:
     os.makedirs("logs", exist_ok=True)
     formatter = logging.Formatter("{asctime}:{levelname}:{name}:{message}", style="{")
 
@@ -23,15 +27,155 @@ if __name__ == "__main__":
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     base_logger.addHandler(console_handler)
-    file_handler = TimedRotatingFileHandler("logs/fa_search_bot.log", when="midnight")
+    file_handler = TimedRotatingFileHandler("logs/fa_journaliser.log", when="midnight")
     file_handler.setFormatter(formatter)
     base_logger.addHandler(file_handler)
+    aiohttp_logger = logging.getLogger("aiohttp")
+    aiohttp_logger.setLevel(logging.CRITICAL)
+    aiohttp_logger.propagate = False
+
+
+class AppContextObj(TypedDict):
+    db: Database
+    conf: dict
+
+
+class AppContext(click.Context):
+    obj: AppContextObj
+
+
+@click.group()
+@click.pass_context
+def main(ctx: AppContext) -> None:
+    ctx.ensure_object(dict)
+    # Setup logging
+    setup_logging()
     # Load config
     with open("config.json", "r") as f:
-        conf = json.load(f)
+        ctx.obj["conf"] = json.load(f)
     # Run the bot
-    db = Database()
-    asyncio.run(db.start())
-    asyncio.run(run_download(db, conf["fa_cookies"]))
-    # TODO: populate all the rows missing journal body and author and stuff
-    sys.exit(0)
+    ctx.obj["db"] = Database()
+    asyncio.run(ctx.obj["db"].start())
+    ctx.call_on_close(lambda: asyncio.run(ctx.obj["db"].stop()))
+
+
+@main.command(
+    "test-download",
+    help="Download and save a single journal, printing information about it, to validate the downloader",
+)
+@click.option("--journal_id", type=int, required=True, help="ID of the journal to download and test")
+@click.pass_context
+def cmd_test_download(ctx: AppContext, journal_id: int) -> None:
+    ctx.ensure_object(dict)
+    asyncio.run(test_download(journal_id, ctx.obj["db"]))
+
+
+@main.command("check-downloads", help="Checks through all downloaded journals, to ensure they can be correctly parsed")
+@click.pass_context
+def cmd_check_downloads(ctx: AppContext) -> None:
+    ctx.ensure_object(dict)
+    # Check downloads
+    asyncio.run(check_downloads())
+
+
+@main.command(
+    "import-downloads",
+    help="Checks through all downloaded journals, saving or updating them in the database. Any journal snapshots which "
+         "are 'registered users only' error pages are deleted",
+)
+@click.pass_context
+def cmd_import_downloads(ctx: AppContext) -> None:
+    ctx.ensure_object(dict)
+    db = ctx.obj["db"]
+    # Import downloads
+    asyncio.run(import_downloads(db))
+
+
+@main.command(
+    "run-download",
+    help="Starts the archival tool, running both backwards and forwards from a given point, or from the top and bottom "
+         "of the current set of downloaded journals. A combination of 'work-forwards' and 'work-backwards' commands.",
+)
+@click.option(
+    "--start_journal",
+    type=int,
+    help="The ID of the journal to start with, if none exist",
+    default=START_JOURNAL,
+)
+@click.pass_context
+def cmd_run_download(ctx: AppContext, start_journal: int) -> None:
+    ctx.ensure_object(dict)
+    db = ctx.obj["db"]
+    cookies = ctx.obj["conf"]["fa_cookies"]
+    # Run downloader
+    asyncio.run(run_download(db, cookies, start_journal))
+
+
+@main.command(
+    "work-forwards",
+    help="Starts downloading newer and newer journals, starting from the newest it has seen, until it reaches the "
+         "newest journals available. Then it keeps up to date with new journals as they are posted",
+)
+@click.option(
+    "--start_journal",
+    type=int,
+    help="The ID of the journal to start with, if no journals have been downloaded yet",
+    default=START_JOURNAL,
+)
+@click.pass_context
+def cmd_work_forwards(ctx: AppContext, start_journal: int) -> None:
+    ctx.ensure_object(dict)
+    db = ctx.obj["db"]
+    cookies = ctx.obj["conf"]["fa_cookies"]
+    # Fetch start journal
+    journal = asyncio.run(download_if_not_exists(db, start_journal, cookies))
+    # Start working forwards
+    asyncio.run(work_forwards(
+        db,
+        journal,
+        cookies
+    ))
+
+
+@main.command(
+    "work-backwards",
+    help="Starts downloading older and older journals, starting from the oldest it has seen, until it reaches the "
+         "first journal on the site.",
+)
+@click.option(
+    "--start_journal",
+    type=int,
+    help="The ID of the journal to start with, if no journals have been downloaded yet",
+    default=START_JOURNAL,
+)
+@click.pass_context
+def cmd_work_backwards(ctx: AppContext, start_journal: int) -> None:
+    ctx.ensure_object(dict)
+    db = ctx.obj["db"]
+    cookies = ctx.obj["conf"]["fa_cookies"]
+    # Fetch start journal
+    journal = asyncio.run(download_if_not_exists(db, start_journal, cookies))
+    # Start working backwards
+    asyncio.run(work_backwards(
+        db,
+        journal,
+        cookies
+    ))
+
+
+@main.command(
+    "fill-gaps",
+    help="Checks through the list of all downloaded journals, and fills in any missing journals in that dataset which "
+         "may have been deleted or lost",
+)
+@click.pass_context
+def cmd_fill_gaps(ctx: AppContext) -> None:
+    ctx.ensure_object(dict)
+    db = ctx.obj["db"]
+    cookies = ctx.obj["conf"]["fa_cookies"]
+    # Fill gaps
+    asyncio.run(fill_gaps(db, cookies))
+
+
+if __name__ == "__main__":
+    main()
