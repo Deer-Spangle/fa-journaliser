@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
-from typing import TypedDict
+from typing import TypedDict, Optional
 
 import click
 
@@ -102,13 +102,21 @@ def cmd_import_downloads(ctx: AppContext) -> None:
     help="The ID of the journal to start with, if none exist",
     default=START_JOURNAL,
 )
+@click.option("--min-journal", "--min", type=int, help="The ID of the oldest journal to download", default=0)
+@click.option("--max-journal", "--max", type=int, help="The ID of the newest journal to download", default=None)
 @click.pass_context
-def cmd_run_download(ctx: AppContext, start_journal: int) -> None:
+def cmd_run_download(ctx: AppContext, start_journal: int, max_journal: Optional[int], min_journal: int) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
     # Run downloader
-    asyncio.run(run_download(db, cookies, start_journal))
+    asyncio.run(run_download(
+        db,
+        cookies,
+        start_id=start_journal,
+        min_id=min_journal,
+        max_id=max_journal,
+    ))
 
 
 @main.command(
@@ -122,8 +130,9 @@ def cmd_run_download(ctx: AppContext, start_journal: int) -> None:
     help="The ID of the journal to start with, if no journals have been downloaded yet",
     default=START_JOURNAL,
 )
+@click.option("--max-journal", "--max", type=int, help="The ID of the newest journal to download", default=None)
 @click.pass_context
-def cmd_work_forwards(ctx: AppContext, start_journal: int) -> None:
+def cmd_work_forwards(ctx: AppContext, start_journal: int, max_journal: Optional[int]) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
@@ -133,7 +142,8 @@ def cmd_work_forwards(ctx: AppContext, start_journal: int) -> None:
     asyncio.run(work_forwards(
         db,
         journal,
-        cookies
+        cookies,
+        max_id=max_journal
     ))
 
 
@@ -148,8 +158,9 @@ def cmd_work_forwards(ctx: AppContext, start_journal: int) -> None:
     help="The ID of the journal to start with, if no journals have been downloaded yet",
     default=START_JOURNAL,
 )
+@click.option("--min-journal", "--min", type=int, help="The ID of the oldest journal to download", default=0)
 @click.pass_context
-def cmd_work_backwards(ctx: AppContext, start_journal: int) -> None:
+def cmd_work_backwards(ctx: AppContext, start_journal: int, min_journal: int) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
@@ -159,7 +170,8 @@ def cmd_work_backwards(ctx: AppContext, start_journal: int) -> None:
     asyncio.run(work_backwards(
         db,
         journal,
-        cookies
+        cookies,
+        min_id=min_journal,
     ))
 
 
