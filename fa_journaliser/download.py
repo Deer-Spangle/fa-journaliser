@@ -20,21 +20,26 @@ BATCH_SIZE = 5
 
 
 async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> Journal:
-    journal_url = f"https://www.furaffinity.net/journal/{journal_id}"
-    session = aiohttp.ClientSession(cookies=cookies)
-    journal = Journal(journal_id, datetime.datetime.now())
-    async with session.get(journal_url) as resp:
-        resp.raise_for_status()
-        filename = journal.journal_html_filename
-        dirname = os.path.dirname(filename)
-        await aiofiles.os.makedirs(dirname, exist_ok=True)
-        content = b""
-        async with aiofiles.open(filename, "wb") as f:
-            async for chunk in resp.content.iter_chunked(8192):
-                content += chunk
-                await f.write(chunk)
-        journal._info = JournalInfo.from_content_bytes(journal_id, content)
-        return journal
+    while True:
+        session = aiohttp.ClientSession(cookies=cookies)
+        journal = Journal(journal_id, datetime.datetime.now())
+        async with session.get(journal.journal_link) as resp:
+            try:
+                resp.raise_for_status()
+            except aiohttp.ClientError as e:
+                logger.warning("Web request failed for journal %s, retrying", journal.journal_link, exc_info=e)
+                await asyncio.sleep(5)
+                continue
+            filename = journal.journal_html_filename
+            dirname = os.path.dirname(filename)
+            await aiofiles.os.makedirs(dirname, exist_ok=True)
+            content = b""
+            async with aiofiles.open(filename, "wb") as f:
+                async for chunk in resp.content.iter_chunked(8192):
+                    content += chunk
+                    await f.write(chunk)
+            journal._info = JournalInfo.from_content_bytes(journal_id, content)
+            return journal
 
 
 async def download_journal_with_backup_cookies(journal_id: int, cookies: dict) -> Journal:
