@@ -19,6 +19,7 @@ class Database:
 
     async def start(self) -> None:
         self.db = await aiosqlite.connect("journals.db")
+        self.db.row_factory = aiosqlite.Row
         await self.db.execute("""CREATE TABLE IF NOT EXISTS `journals` (
             `journal_id` INT NOT NULL,
             `is_deleted` BOOLEAN NOT NULL,
@@ -37,11 +38,9 @@ class Database:
             await self.db.close()
 
     async def count_journals(self) -> int:
-        async with aiosqlite.connect(...) as db:
-            db.row_factory = aiosqlite.Row
-            async with db.execute("SELECT COUNT(*) AS count FROM journals") as cursor:
-                async for row in cursor:
-                    count = row['count']
+        async with self.db.execute("SELECT COUNT(*) AS count FROM journals") as cursor:
+            async for row in cursor:
+                count = row['count']
         return count
 
     async def add_entry(
