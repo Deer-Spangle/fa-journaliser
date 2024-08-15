@@ -58,7 +58,7 @@ batch_download_timing_histogram = prometheus_client.Histogram(
     buckets=[0.1, 0.5, 1, 1.5, 2, 3, 4, 5, 10],
 )
 batch_save_timing_histogram = prometheus_client.Histogram(
-    "fa_journaliser_batch_save_time_taken_seconds",
+    "fajournaliser_batch_save_time_taken_seconds",
     "Histogram of the time taken to save a batch of journal entries, in seconds.",
     labelnames=["batch_size"],
     buckets=[0.1, 0.5, 1, 1.5, 2, 3, 4, 5, 10],
