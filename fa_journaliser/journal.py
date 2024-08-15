@@ -106,4 +106,4 @@ class Journal:
             json_data = json.dumps(info.to_json())
             logger.info("Journal title: %s", info.title)
         await db.add_entry(journal_id, is_deleted, archive_date, error, login_used, json_data)
-        total_error_counts.labels(error_type=str(error_type)).inc()
+        total_error_counts.labels(error_class=str(error_type)).inc()
