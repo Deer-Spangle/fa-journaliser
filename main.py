@@ -7,6 +7,8 @@ from logging.handlers import TimedRotatingFileHandler
 from typing import TypedDict, Optional
 
 import click
+import prometheus_client
+from prometheus_client import start_http_server
 
 from fa_journaliser.database import Database
 from fa_journaliser.download import run_download, fill_gaps, test_download, work_forwards, \
@@ -17,6 +19,13 @@ logger = logging.getLogger(__name__)
 
 START_JOURNAL = 10_923_887
 DEFAULT_BATCH_SIZE = 5
+PROMETHEUS_PORT = 7074
+
+
+startup_time = prometheus_client.Gauge(
+    "fajournaliser_startup_unixtime",
+    "Unix timestamp of the last time the journaliser was started up",
+)
 
 
 def setup_logging() -> None:
@@ -57,6 +66,8 @@ def main(ctx: AppContext) -> None:
     # Run the bot
     ctx.obj["db"] = Database()
     asyncio.run(ctx.obj["db"].start())
+    startup_time.set_to_current_time()
+    start_http_server(PROMETHEUS_PORT)
     ctx.call_on_close(lambda: asyncio.run(ctx.obj["db"].stop()))
 
 
