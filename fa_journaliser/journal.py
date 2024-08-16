@@ -22,7 +22,7 @@ total_error_counts = prometheus_client.Counter(
 )
 # Initialise for all error types that are saved
 for exc_class in [None, JournalNotFound, AccountDisabled, PendingDeletion]:
-    total_error_counts.labels(error_class=exc_class.__name__)
+    total_error_counts.labels(error_class=exc_class.__name__ if exc_class is not None else "None")
 
 
 @dataclasses.dataclass
@@ -106,4 +106,4 @@ class Journal:
             json_data = json.dumps(info.to_json())
             logger.info("Journal title: %s", info.title)
         await db.add_entry(journal_id, is_deleted, archive_date, error, login_used, json_data)
-        total_error_counts.labels(error_class=error_type.__name__).inc()
+        total_error_counts.labels(error_class=error_type.__name__ if error_type is not None else "None").inc()
