@@ -1,9 +1,10 @@
 import glob
 import logging
 from collections import Counter
-from typing import Callable, TypeVar
+from typing import Callable, TypeVar, Optional
 
 import aiofiles.os
+import prometheus_client
 
 from fa_journaliser.database import Database
 from fa_journaliser.journal_info import JournalNotFound, AccountDisabled, PendingDeletion, RegisteredUsersOnly
@@ -13,12 +14,30 @@ from fa_journaliser.journal import Journal
 logger = logging.getLogger(__name__)
 
 
+total_journal_files = prometheus_client.Gauge(
+    "fajournaliser_archived_journal_files_total",
+    "The total number of journal files archived",
+)
+
+
 def list_downloaded_journals() -> list[Journal]:
     file_paths = glob.glob("store/**/*.html", recursive=True)
     journals = [
         Journal.from_file_path(file_path) for file_path in file_paths
     ]
     return sorted(journals, key=lambda journal: journal.journal_id)
+
+
+def list_journals_truncated(min_id: int, max_id: Optional[int]) -> list[Journal]:
+    # List all current journals
+    all_journals = list_downloaded_journals()
+    total_journal_files.set(len(all_journals))
+    # Truncate the set of journals to min and max
+    return [
+        j for j in all_journals
+        if j.journal_id >= min_id and (max_id is None or j.journal_id <= max_id)
+    ]
+
 
 
 async def check_downloads() -> None:

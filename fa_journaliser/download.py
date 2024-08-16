@@ -13,7 +13,7 @@ import prometheus_client
 from fa_journaliser.database import Database
 from fa_journaliser.journal import Journal
 from fa_journaliser.journal_info import JournalInfo
-from fa_journaliser.utils import list_downloaded_journals, split_list
+from fa_journaliser.utils import list_downloaded_journals, split_list, total_journal_files, list_journals_truncated
 
 logger = logging.getLogger(__name__)
 
@@ -91,10 +91,6 @@ work_backwards_batch_size = prometheus_client.Gauge(
 work_backwards_oldest_id = prometheus_client.Gauge(
     "fajournaliser_work_backwards_oldest_journal_id",
     "The oldest journal ID that has been ingested while working backwards",
-)
-total_journal_files = prometheus_client.Gauge(
-    "fajournaliser_archived_journal_files_total",
-    "The total number of journal files archived",
 )
 
 
@@ -266,14 +262,8 @@ async def run_download(
         forward_batch_size: int = BATCH_SIZE,
         backward_batch_size: int = BATCH_SIZE,
 ) -> None:
-    # List all current journals
-    all_journals = list_downloaded_journals()
-    total_journal_files.set(len(all_journals))
-    # Truncate the set of journals to min and max
-    all_journals = [
-        j for j in all_journals
-        if j.journal_id >= min_id and (max_id is None or j.journal_id <= max_id)
-    ]
+    # List relevant journals
+    all_journals = list_journals_truncated(min_id, max_id)
     # If there are no journals yet, download the start one
     if not all_journals:
         # If start ID isn't set, try and get it from the range

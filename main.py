@@ -13,7 +13,7 @@ from prometheus_client import start_http_server
 from fa_journaliser.database import Database
 from fa_journaliser.download import run_download, fill_gaps, test_download, work_forwards, \
     download_if_not_exists, work_backwards
-from fa_journaliser.utils import check_downloads, import_downloads
+from fa_journaliser.utils import check_downloads, import_downloads, list_journals_truncated
 
 logger = logging.getLogger(__name__)
 
@@ -182,8 +182,13 @@ def cmd_work_forwards(ctx: AppContext, start_journal: int, max_journal: Optional
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
-    # Fetch start journal
-    journal = asyncio.run(download_if_not_exists(db, start_journal, cookies))
+    # List relevant journals
+    journals = list_journals_truncated(start_journal, max_journal)
+    if not journals:
+        # Fetch start journal if none exists
+        journals.append(asyncio.run(download_if_not_exists(db, start_journal, cookies)))
+    # Get the start point of these journals
+    journal = max(journals, key=lambda x: x.journal_id)
     # Start working forwards
     asyncio.run(work_forwards(
         db,
@@ -212,8 +217,13 @@ def cmd_work_backwards(ctx: AppContext, start_journal: int, min_journal: int, ba
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
-    # Fetch start journal
-    journal = asyncio.run(download_if_not_exists(db, start_journal, cookies))
+    # List relevant journals
+    journals = list_journals_truncated(min_journal, start_journal)
+    if not journals:
+        # Fetch start journal if none exists
+        journals.append(asyncio.run(download_if_not_exists(db, start_journal, cookies)))
+    # Get the start point of these journals
+    journal = min(journals, key=lambda x: x.journal_id)
     # Start working backwards
     asyncio.run(work_backwards(
         db,
