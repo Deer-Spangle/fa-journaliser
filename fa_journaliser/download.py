@@ -99,39 +99,41 @@ total_journal_files = prometheus_client.Gauge(
 
 
 async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> Journal:
+    # Prepare directory
+    filename = journal.journal_html_filename
+    dirname = os.path.dirname(filename)
+    await aiofiles.os.makedirs(dirname, exist_ok=True)
+    # Setup metrics
     req_count = 0
     cookie_label = str(cookies is not None)
+    # Keep trying to make the web request until it works
     while True:
         session = aiohttp.ClientSession(cookies=cookies)
         journal = Journal(journal_id, datetime.datetime.now())
-        with web_request_timing_histogram.time():
-            async with session.get(journal.journal_link) as resp:
-                req_count += 1
-                total_web_requests.labels(has_cookies=cookie_label).inc()
-                # Check web request worked
-                try:
+        try:
+            with web_request_timing_histogram.time():
+                async with session.get(journal.journal_link) as resp:
+                    req_count += 1
+                    total_web_requests.labels(has_cookies=cookie_label).inc()
+                    # Check web request worked
                     resp.raise_for_status()
-                except aiohttp.ClientError as e:
-                    logger.warning("Web request failed for journal %s, retrying", journal.journal_link, exc_info=e)
-                    await asyncio.sleep(5)
-                    continue
-                # Prepare directory
-                filename = journal.journal_html_filename
-                dirname = os.path.dirname(filename)
-                await aiofiles.os.makedirs(dirname, exist_ok=True)
-                # Download content
-                content = b""
-                async with aiofiles.open(filename, "wb") as f:
-                    async for chunk in resp.content.iter_chunked(8192):
-                        content += chunk
-                        await f.write(chunk)
-                journal._info = JournalInfo.from_content_bytes(journal_id, content)
-                # Metrics
-                download_attempts_needed.labels(has_cookies=cookie_label).observe(req_count)
-                total_downloaded_pages.labels(has_cookies=cookie_label).inc()
-                total_downloaded_bytes.labels(has_cookies=cookie_label).inc(len(content))
-                # Return the journal
-                return journal
+                    # Download content
+                    content = b""
+                    async with aiofiles.open(filename, "wb") as f:
+                        async for chunk in resp.content.iter_chunked(8192):
+                            content += chunk
+                            await f.write(chunk)
+                    journal._info = JournalInfo.from_content_bytes(journal_id, content)
+        except aiohttp.ClientError as e:
+            logger.warning("Web request failed for journal %s, retrying", journal.journal_link, exc_info=e)
+            await asyncio.sleep(5)
+            continue
+        # Metrics
+        download_attempts_needed.labels(has_cookies=cookie_label).observe(req_count)
+        total_downloaded_pages.labels(has_cookies=cookie_label).inc()
+        total_downloaded_bytes.labels(has_cookies=cookie_label).inc(len(content))
+        # Return the journal
+        return journal
 
 
 async def download_journal_with_backup_cookies(journal_id: int, cookies: dict) -> Journal:
