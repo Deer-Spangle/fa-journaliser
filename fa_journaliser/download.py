@@ -100,6 +100,7 @@ total_journal_files = prometheus_client.Gauge(
 
 async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> Journal:
     # Prepare directory
+    journal = Journal(journal_id, datetime.datetime.now())
     filename = journal.journal_html_filename
     dirname = os.path.dirname(filename)
     await aiofiles.os.makedirs(dirname, exist_ok=True)
@@ -109,7 +110,7 @@ async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> J
     # Keep trying to make the web request until it works
     while True:
         session = aiohttp.ClientSession(cookies=cookies)
-        journal = Journal(journal_id, datetime.datetime.now())
+        journal._archive_date = datetime.datetime.now()
         try:
             with web_request_timing_histogram.time():
                 async with session.get(journal.journal_link) as resp:
