@@ -216,8 +216,22 @@ class JournalInfo:
                 "display_name": self.author_display_name,
                 "username": self.author_username,
                 "avatar": self.author_avatar,
+                # TODO: badges
+                # TODO: status_prefix
+                # TODO: status_prefix_meaning
+                # TODO: user title
             },
-            # TODO: comments
+            # TODO: "edited": false?
+            # TODO: "comments_disabled": False
+            # TODO: "comments": [
+            #    "comment_id": 1234,
+            #    "parent_id": None,
+            #    "deleted": False,
+            #    "author": {},
+            #    "posted_at": isoformat
+            #    "comment_text": {},
+            #     "edited": False,
+            #  ]
             "link": f"https://furaffinity.net/journal/{self.journal_id}/",
             "posted_at": self.posted_at.isoformat(),
         }
