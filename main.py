@@ -75,7 +75,7 @@ def main(ctx: AppContext) -> None:
     "test-download",
     help="Download and save a single journal, printing information about it, to validate the downloader",
 )
-@click.option("--journal_id", type=int, required=True, help="ID of the journal to download and test")
+@click.option("--journal-id", type=int, required=True, help="ID of the journal to download and test")
 @click.pass_context
 def cmd_test_download(ctx: AppContext, journal_id: int) -> None:
     ctx.ensure_object(dict)
@@ -96,7 +96,7 @@ def cmd_check_downloads(ctx: AppContext) -> None:
          "are 'registered users only' error pages are deleted",
 )
 @click.option(
-    "--repopulate_path",
+    "--repopulate-path",
     help="If provided, any database journal entry where this json path is null, will have the json re-parsed from the "
          "archive file",
     default=None,
@@ -122,7 +122,7 @@ def cmd_import_downloads(
          "of the current set of downloaded journals. A combination of 'work-forwards' and 'work-backwards' commands.",
 )
 @click.option(
-    "--start_journal",
+    "--start-journal",
     type=int,
     help="The ID of the journal to start with, if none exist",
     default=START_JOURNAL,
@@ -183,7 +183,7 @@ def cmd_run_download(
          "newest journals available. Then it keeps up to date with new journals as they are posted",
 )
 @click.option(
-    "--start_journal",
+    "--start-journal",
     type=int,
     help="The ID of the journal to start with, if no journals have been downloaded yet",
     default=START_JOURNAL,
@@ -218,7 +218,7 @@ def cmd_work_forwards(ctx: AppContext, start_journal: int, max_journal: Optional
          "first journal on the site.",
 )
 @click.option(
-    "--start_journal",
+    "--start-journal",
     type=int,
     help="The ID of the journal to start with, if no journals have been downloaded yet",
     default=START_JOURNAL,
