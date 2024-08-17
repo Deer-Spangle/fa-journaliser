@@ -205,6 +205,18 @@ class JournalInfo:
             avatar_url = f"https{avatar_url}"
         return avatar_url
 
+    @cached_property
+    def comments_disabled(self) -> Optional[bool]:
+        if self.content is None:
+            return False
+        response_box = self.content.select_one("#responsebox")
+        if response_box is None:
+            return False
+        response_string = response_box.string
+        if response_string is None:
+            return False
+        return response_string.strip() == "Comment posting has been disabled by the journal owner."
+
     def to_json(self) -> dict:
         return {
             "journal_id": self.journal_id,
@@ -221,7 +233,7 @@ class JournalInfo:
                 # TODO: status_prefix_meaning
                 # TODO: user title
             },
-            # TODO: "comments_disabled": False
+            "comments_disabled": self.comments_disabled,
             # TODO: "comments": [
             #    "comment_id": 1234,
             #    "parent_id": None,
