@@ -32,6 +32,10 @@ class DataIncomplete(Exception):
     pass
 
 
+def display_name_to_username(name: str) -> str:
+    return name.lower().replace("_", "")
+
+
 @dataclasses.dataclass
 class JournalInfo:
     journal_id: int
@@ -187,8 +191,43 @@ class JournalInfo:
             return None
         username_elem = self.userpage_nav_header.select_one("username")
         display_name = "".join(username_elem.stripped_strings)
-        display_name = display_name.lstrip("~∞!")
+        prefix = self.author_status_prefix
+        if prefix is not None:
+            display_name = display_name.removeprefix(prefix)
         return display_name
+
+    @cached_property
+    def author_status_prefix(self) -> Optional[str]:
+        if self.userpage_nav_header is None:
+            return None
+        username_elem = self.userpage_nav_header.select_one("username")
+        display_name = "".join(username_elem.stripped_strings)
+        potential_prefix = display_name[0]
+        username = self.author_username
+        # These characters cannot be in a display name, easy
+        if potential_prefix in "∞!":
+            return potential_prefix
+        # Otherwise, try and convert display name and see if they match
+        potential_username = display_name_to_username(display_name)
+        if username == potential_username:
+            return ""
+        # If the first letter is another known prefix, and the rest matches the username, found prefix
+        # We have to check startswith, because display names can get truncated, see `lapisgamerfoxviewingartsonly`
+        if potential_prefix in "~-" and username.startswith(potential_username[1:]):
+            return potential_prefix
+        # Otherwise, oh no
+        raise ValueError(f"Unrecognised status prefix. Username was {username}, but display name suggested it should be {potential_username}")
+
+    @cached_property
+    def author_status_prefix_meaning(self) -> Optional[str]:
+        return {
+            None: None,
+            "": "",
+            "∞": "Deceased",
+            "!": "Suspended",
+            "~": "Member",
+            "-": "Banned",
+        }[self.author_status_prefix]
 
     @cached_property
     def author_username(self) -> Optional[str]:
@@ -228,9 +267,9 @@ class JournalInfo:
                 "display_name": self.author_display_name,
                 "username": self.author_username,
                 "avatar": self.author_avatar,
-                # TODO: badges
-                # TODO: status_prefix
-                # TODO: status_prefix_meaning
+                "status_prefix": self.author_status_prefix,
+                "status_prefix_meaning": self.author_status_prefix_meaning,
+                # TODO: badges: []
                 # TODO: user title
             },
             "comments_disabled": self.comments_disabled,
