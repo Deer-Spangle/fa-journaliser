@@ -76,17 +76,18 @@ async def check_downloads() -> None:
 
 
 async def import_downloads(db: Database, repopulate_path: Optional[str], min_id: int, max_id: Optional[int]) -> None:
-    # List all journal files
-    all_journals = list_journals_truncated(min_id, max_id)
-    logger.info("Total of %s journal files archived", len(all_journals))
+    # List all journal IDs
+    journal_ids = [j.journal_id for j in list_journals_truncated(min_id, max_id)]
+    logger.info("Total of %s journal files archived", len(journal_ids))
     # If a repopulate path is given, filter down that list
     if repopulate_path:
         filter_ids = await db.list_ids_where_path_is_null(repopulate_path)
-        all_journals = [j for j in all_journals if j.journal_id in filter_ids]
-        logger.info("Filtered down to %s journals to update", len(all_journals))
+        journal_ids = [j for j in journal_ids if j in filter_ids]
+        logger.info("Filtered down to %s journals to update", len(journal_ids))
     # Go through journals, parsing and importing
-    for journal in all_journals:
-        journal_id = journal.journal_id
+    for journal_id in journal_ids:
+        # Create journal object here, rather than using a list of all journal objects, to avoid memory leak
+        journal = Journal(journal_id)
 
         logger.info("Journal ID: %s", journal_id)
         try:
