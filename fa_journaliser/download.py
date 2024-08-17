@@ -301,16 +301,58 @@ async def test_download(journal_id: int, db: Database) -> None:
     await journal.save(db)
 
 
-async def fill_gaps(db: Database, backup_cookies: dict) -> None:
-    all_journals = list_downloaded_journals()
-    prev_id: Optional[int] = None
-    for journal in all_journals:
-        next_id = journal.journal_id
-        if prev_id is None:
+async def fill_gaps(db: Database, backup_cookies: dict, min_id: int, max_id: Optional[int]) -> None:
+    # List all archived journal files
+    all_journals = list_journals_truncated(min_id, max_id)
+    logger.info("There are %s downloaded journal files", len(all_journals))
+    # Calculate how many files are missing
+    highest_id = max(all_journals, key=lambda x: x.journal_id)
+    lowest_id = min(all_journals, key=lambda x: x.journal_id)
+    total_expected = highest_id.journal_id - lowest_id.journal_id + 1
+    num_missing_files = total_expected - len(all_journals)
+    logger.info("There are %s archive files missing", num_missing_files)
+    if num_missing_files > 0:
+        # Download missing journals
+        prev_id: Optional[int] = None
+        for journal in all_journals:
+            next_id = journal.journal_id
+            # Initialise with first ID
+            if prev_id is None:
+                prev_id = next_id
+                continue
+            # Fill in missing ones
+            for missing_id in range(prev_id+1, next_id):
+                logger.info("Found missing journal ID: %s, downloading", missing_id)
+                await download_and_save(db, missing_id, backup_cookies)
             prev_id = next_id
-            continue
-        for missing_id in range(prev_id+1, next_id):
-            logger.info("Found missing journal ID: %s, downloading", missing_id)
-            await download_and_save(db, missing_id, backup_cookies)
-        prev_id = next_id
+        logger.info("Filled in all missing archive files")
+    # List which database entries are missing
+    all_db_journals = await db.list_journal_ids_truncated(min_id, max_id)
+    logger.info("There are %s journal entries", len(all_db_journals))
+    num_missing_entries = total_expected - len(all_db_journals)
+    logger.info("There are %s database entries missing", num_missing_entries)
+    if num_missing_entries > 0:
+        # Ingest missing journals
+        prev_id: Optional[int] = None
+        for journal_id in all_db_journals:
+            next_id = journal_id
+            # Initialise with first ID
+            if prev_id is None:
+                prev_id = next_id
+                continue
+            # Fill in missing entries
+            for missing_id in range(prev_id + 1, next_id):
+                logger.info("Found missing journal entry ID: %s, refreshing", missing_id)
+                journal = Journal(missing_id)
+                journal_info = await journal.info()
+                # Re-download any that say the journal was deleted
+                if journal_info.journal_deleted:
+                    logger.info("This journal page says it was deleted, will re-download")
+                    await delete_many([journal])
+                    await download_and_save(db, missing_id, backup_cookies)
+                else:
+                    logger.info("Saving database entry")
+                    await journal.save(db)
+            # Increment prev id
+            prev_id = next_id
     logger.info("DONE!")

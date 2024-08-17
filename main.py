@@ -243,15 +243,18 @@ def cmd_work_backwards(ctx: AppContext, start_journal: int, min_journal: int, ba
 @main.command(
     "fill-gaps",
     help="Checks through the list of all downloaded journals, and fills in any missing journals in that dataset which "
-         "may have been deleted or lost",
+         "may have been deleted or lost. Checks journals missing database entries also, redownloading any which say "
+         "they were deleted.",
 )
+@click.option("--min-journal", "--min", type=int, help="The ID of the oldest journal to check", default=0)
+@click.option("--max-journal", "--min", type=int, help="The ID of the newest journal to check", default=None)
 @click.pass_context
-def cmd_fill_gaps(ctx: AppContext) -> None:
+def cmd_fill_gaps(ctx: AppContext, min_journal: 0, max_journal: Optional[int]) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
     # Fill gaps
-    asyncio.run(fill_gaps(db, cookies))
+    asyncio.run(fill_gaps(db, cookies, min_journal, max_journal))
 
 
 if __name__ == "__main__":

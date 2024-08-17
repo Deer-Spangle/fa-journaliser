@@ -65,6 +65,16 @@ class Database:
         await self.db.commit()
         total_journal_db_entries.inc(1)
 
+    async def list_journal_ids_truncated(self, min_id: int, max_id: Optional[int]) -> list[int]:
+        journal_ids = []
+        async with self.db.execute(
+                "SELECT journal_id FROM journals WHERE journal_id >= ? AND (? IS NULL OR journal_id <= ?)",
+                (min_id, max_id, max_id)
+        ) as cursor:
+            async for row in cursor:
+                journal_ids.append(row['journal_id'])
+        return journal_ids
+
     async def list_ids_where_path_is_null(self, json_path: str) -> list[int]:
         journal_ids = []
         async with self.db.execute(
