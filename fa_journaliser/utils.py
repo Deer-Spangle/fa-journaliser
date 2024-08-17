@@ -39,7 +39,6 @@ def list_journals_truncated(min_id: int, max_id: Optional[int]) -> list[Journal]
     ]
 
 
-
 async def check_downloads() -> None:
     all_journals = list_downloaded_journals()
     results = {}
