@@ -205,6 +205,7 @@ async def work_forwards(
         if len(good_journals) == 0:
             work_forwards_empty_batch_count.inc()
             logger.warning("Didn't get any good new journals in that batch! Gonna wait and retry")
+            await delete_many(next_journals)
             await asyncio.sleep(30)
             continue
         # Convert to list of IDs and figure which is the bleeding edge newest journal
