@@ -64,3 +64,13 @@ class Database:
         )
         await self.db.commit()
         total_journal_db_entries.inc(1)
+
+    async def list_ids_where_path_is_null(self, json_path: str) -> list[int]:
+        journal_ids = []
+        async with self.db.execute(
+                "SELECT journal_id FROM journals WHERE error IS NULL AND json_extract(json, ?) IS NULL",
+                (json_path,)
+        ) as cursor:
+            async for row in cursor:
+                journal_ids.append(row['journal_id'])
+        return journal_ids

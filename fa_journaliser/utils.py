@@ -75,8 +75,16 @@ async def check_downloads() -> None:
         print(f"Result: {result}, count: {count}")
 
 
-async def import_downloads(db: Database) -> None:
+async def import_downloads(db: Database, repopulate_path: Optional[str]) -> None:
+    # List all journal files
     all_journals = list_downloaded_journals()
+    logger.info("Total of %s journal files archived", len(all_journals))
+    # If a repopulate path is given, filter down that list
+    if repopulate_path:
+        filter_ids = await db.list_ids_where_path_is_null(repopulate_path)
+        all_journals = [j for j in all_journals if j.journal_id in filter_ids]
+        logger.info("Filtered down to %s journals to update", len(all_journals))
+    # Go through journals, parsing and importing
     for journal in all_journals:
         journal_id = journal.journal_id
 

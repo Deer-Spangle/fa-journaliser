@@ -95,12 +95,18 @@ def cmd_check_downloads(ctx: AppContext) -> None:
     help="Checks through all downloaded journals, saving or updating them in the database. Any journal snapshots which "
          "are 'registered users only' error pages are deleted",
 )
+@click.option(
+    "--repopulate_path",
+    help="If provided, any database journal entry where this json path is null, will have the json re-parsed from the "
+         "archive file",
+    default=None,
+)
 @click.pass_context
-def cmd_import_downloads(ctx: AppContext) -> None:
+def cmd_import_downloads(ctx: AppContext, repopulate_path: Optional[str]) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     # Import downloads
-    asyncio.run(import_downloads(db))
+    asyncio.run(import_downloads(db, repopulate_path))
 
 
 @main.command(
