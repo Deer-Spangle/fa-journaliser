@@ -75,9 +75,9 @@ async def check_downloads() -> None:
         print(f"Result: {result}, count: {count}")
 
 
-async def import_downloads(db: Database, repopulate_path: Optional[str]) -> None:
+async def import_downloads(db: Database, repopulate_path: Optional[str], min_id: int, max_id: Optional[int]) -> None:
     # List all journal files
-    all_journals = list_downloaded_journals()
+    all_journals = list_journals_truncated(min_id, max_id)
     logger.info("Total of %s journal files archived", len(all_journals))
     # If a repopulate path is given, filter down that list
     if repopulate_path:

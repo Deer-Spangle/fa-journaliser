@@ -101,12 +101,19 @@ def cmd_check_downloads(ctx: AppContext) -> None:
          "archive file",
     default=None,
 )
+@click.option("--min-journal", "--min", type=int, help="The ID of the oldest journal to check", default=0)
+@click.option("--max-journal", "--min", type=int, help="The ID of the newest journal to check", default=None)
 @click.pass_context
-def cmd_import_downloads(ctx: AppContext, repopulate_path: Optional[str]) -> None:
+def cmd_import_downloads(
+        ctx: AppContext,
+        repopulate_path: Optional[str],
+        min_journal: int,
+        max_journal: Optional[int]
+) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     # Import downloads
-    asyncio.run(import_downloads(db, repopulate_path))
+    asyncio.run(import_downloads(db, repopulate_path, min_journal, max_journal))
 
 
 @main.command(
