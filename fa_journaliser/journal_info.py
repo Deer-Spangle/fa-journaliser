@@ -221,7 +221,6 @@ class JournalInfo:
                 # TODO: status_prefix_meaning
                 # TODO: user title
             },
-            # TODO: "edited": false?
             # TODO: "comments_disabled": False
             # TODO: "comments": [
             #    "comment_id": 1234,
