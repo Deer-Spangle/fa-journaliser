@@ -37,6 +37,22 @@ def display_name_to_username(name: str) -> str:
 
 
 @dataclasses.dataclass
+class BadgeInfo:
+    position: str  # before or after
+    title: str
+    class_type: str
+    image_url: str
+
+    def to_dict(self):
+        return {
+            "position": self.position,
+            "title": self.title,
+            "class_type": self.class_type,
+            "image_url": self.image_url,
+        }
+
+
+@dataclasses.dataclass
 class JournalInfo:
     journal_id: int
     soup: bs4.BeautifulSoup
@@ -230,6 +246,39 @@ class JournalInfo:
         }[self.author_status_prefix]
 
     @cached_property
+    def author_badges(self) -> Optional[list[BadgeInfo]]:
+        if self.userpage_nav_header is None:
+            return None
+        username_elem = self.userpage_nav_header.select_one("username")
+        badges = []
+        # Parse badges before the name
+        before_elem = username_elem.select_one("usericon-block-before")
+        if before_elem is not None:
+            for badge_elem in before_elem.select("img"):
+                classes = badge_elem["class"]
+                classes.remove("userIcon")
+                badges.append(BadgeInfo(
+                    "before",
+                    badge_elem.attrs["title"],
+                    classes[0],
+                    "https://furaffinity.net" + badge_elem.attrs["src"],
+                ))
+        # Parse badges after the name
+        after_elem = username_elem.select_one("usericon-block-after")
+        if after_elem is not None:
+            for badge_elem in after_elem.select("img"):
+                classes = badge_elem["class"]
+                classes.remove("userIcon")
+                badges.append(BadgeInfo(
+                    "after",
+                    badge_elem.attrs["title"],
+                    classes[0],
+                    "https://furaffinity.net" + badge_elem.attrs["src"],
+                ))
+        # Return the list
+        return badges
+
+    @cached_property
     def author_username(self) -> Optional[str]:
         if self.userpage_nav_header is None:
             return None
@@ -269,7 +318,7 @@ class JournalInfo:
                 "avatar": self.author_avatar,
                 "status_prefix": self.author_status_prefix,
                 "status_prefix_meaning": self.author_status_prefix_meaning,
-                # TODO: badges: []
+                "badges": [b.to_dict() for b in self.author_badges],
                 # TODO: user title
             },
             "comments_disabled": self.comments_disabled,
