@@ -55,8 +55,9 @@ class AppContext(click.Context):
 
 
 @click.group()
+@click.option("--prometheus/--no-prometheus", default=True)
 @click.pass_context
-def main(ctx: AppContext) -> None:
+def main(ctx: AppContext, prometheus: bool) -> None:
     ctx.ensure_object(dict)
     # Setup logging
     setup_logging()
@@ -67,7 +68,8 @@ def main(ctx: AppContext) -> None:
     ctx.obj["db"] = Database()
     asyncio.run(ctx.obj["db"].start())
     startup_time.set_to_current_time()
-    start_http_server(PROMETHEUS_PORT)
+    if not prometheus:
+        start_http_server(PROMETHEUS_PORT)
     ctx.call_on_close(lambda: asyncio.run(ctx.obj["db"].stop()))
 
 
