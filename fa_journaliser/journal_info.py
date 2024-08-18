@@ -581,15 +581,6 @@ class JournalInfo:
             "comments": [c.to_dict() for c in self.comments] if self.comments is not None else None,
             "num_comments": self.num_comments,
             "latest_comment_posted_at": self.latest_comment_posted_at.isoformat() if self.latest_comment_posted_at is not None else None,
-            # TODO: "comments": [
-            #    "comment_id": 1234,
-            #    "parent_id": None,
-            #    "deleted": False,
-            #    "author": {},
-            #    "posted_at": isoformat
-            #    "comment_text": {},
-            #     "edited": False,
-            #  ]
             "link": f"https://furaffinity.net/journal/{self.journal_id}/",
             "posted_at": self.posted_at.isoformat(),
         }
