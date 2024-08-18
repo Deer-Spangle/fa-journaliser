@@ -284,6 +284,34 @@ class JournalInfo:
         return badges
 
     @cached_property
+    def _author_user_title_elems(self) -> Optional[list[bs4.PageElement]]:
+        if self.userpage_nav_header is None:
+            return None
+        user_title_elem = self.userpage_nav_header.select_one(".user-title")
+        if user_title_elem is None:
+            return None
+        title_elems = user_title_elem.contents
+        if len(title_elems) != 3:
+            raise ValueError(f"Could not parse user-title, element does not have 3 children: {title_elems}")
+        return title_elems
+
+    @cached_property
+    def author_title(self) -> Optional[str]:
+        title_elems = self._author_user_title_elems
+        if title_elems is None:
+            return None
+        user_title = str(title_elems[0]).strip().removesuffix("|").rstrip()
+        return user_title
+
+    @cached_property
+    def author_registered_at(self) -> Optional[datetime.datetime]:
+        title_elems = self._author_user_title_elems
+        if title_elems is None:
+            return None
+        registered_str = str(title_elems[-1]).strip()
+        return dateutil.parser.parse(registered_str)
+
+    @cached_property
     def author_username(self) -> Optional[str]:
         if self.userpage_nav_header is None:
             return None
@@ -324,7 +352,8 @@ class JournalInfo:
                 "status_prefix": self.author_status_prefix,
                 "status_prefix_meaning": self.author_status_prefix_meaning,
                 "badges": [b.to_dict() for b in self.author_badges],
-                # TODO: user title
+                "user_title": self.author_title,
+                "registered_at": self.author_registered_at.isoformat(),
             },
             "comments_disabled": self.comments_disabled,
             # TODO: "comments": [
