@@ -43,13 +43,39 @@ class BadgeInfo:
     class_type: str
     image_url: str
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             "position": self.position,
             "title": self.title,
             "class_type": self.class_type,
             "image_url": self.image_url,
         }
+
+
+@dataclasses.dataclass
+class AuthorInfo:
+    display_name: str
+    username: str
+    avatar_url: str
+    status_prefix: Optional[str]
+    status_prefix_meaning: Optional[str]
+    badges: list[BadgeInfo]
+    user_title: Optional[str]
+    registered_at: Optional[datetime.datetime]
+
+    def to_dict(self) -> dict:
+        return {
+            "display_name": self.display_name,
+            "username": self.username,
+            "avatar": self.avatar_url,
+            "status_prefix": self.status_prefix,
+            "status_prefix_meaning": self.status_prefix_meaning,
+            "badges": [b.to_dict() for b in self.badges],
+            "user_title": self.user_title,
+            "registered_at": self.registered_at.isoformat(),
+        }
+
+
 
 
 @dataclasses.dataclass
@@ -327,6 +353,21 @@ class JournalInfo:
         return avatar_url
 
     @cached_property
+    def author(self) -> Optional[AuthorInfo]:
+        if self.userpage_nav_header is None:
+            return None
+        return AuthorInfo(
+            self.author_display_name,
+            self.author_username,
+            self.author_avatar,
+            self.author_status_prefix,
+            self.author_status_prefix_meaning,
+            self.author_badges,
+            self.author_title,
+            self.author_registered_at,
+        )
+
+    @cached_property
     def comments_disabled(self) -> Optional[bool]:
         if self.content is None:
             return False
@@ -345,16 +386,7 @@ class JournalInfo:
             "journal_header": self.journal_header,
             "journal_body": self.journal_content,
             "journal_footer": self.journal_footer,
-            "author": {
-                "display_name": self.author_display_name,
-                "username": self.author_username,
-                "avatar": self.author_avatar,
-                "status_prefix": self.author_status_prefix,
-                "status_prefix_meaning": self.author_status_prefix_meaning,
-                "badges": [b.to_dict() for b in self.author_badges],
-                "user_title": self.author_title,
-                "registered_at": self.author_registered_at.isoformat(),
-            },
+            "author": self.author.to_dict() if self.author is not None else None,
             "comments_disabled": self.comments_disabled,
             # TODO: "comments": [
             #    "comment_id": 1234,
