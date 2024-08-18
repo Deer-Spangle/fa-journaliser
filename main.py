@@ -127,7 +127,7 @@ def cmd_import_downloads(
     "--start-journal",
     type=int,
     help="The ID of the journal to start with, if none exist",
-    default=START_JOURNAL,
+    default=None,
 )
 @click.option("--min-journal", "--min", type=int, help="The ID of the oldest journal to download", default=0)
 @click.option("--max-journal", "--max", type=int, help="The ID of the newest journal to download", default=None)
@@ -152,7 +152,7 @@ def cmd_import_downloads(
 @click.pass_context
 def cmd_run_download(
         ctx: AppContext,
-        start_journal: int,
+        start_journal: Optional[int],
         max_journal: Optional[int],
         min_journal: int,
         batch_size: int,
