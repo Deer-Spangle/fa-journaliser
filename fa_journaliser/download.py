@@ -287,8 +287,8 @@ async def run_download(
     await asyncio.gather(task_fwd, task_bkd)
 
 
-async def test_download(journal_id: int, db: Database) -> None:
-    journal = await download_journal(journal_id)
+async def test_download(journal_id: int, db: Database, cookies: dict) -> None:
+    journal = await download_journal_with_backup_cookies(journal_id, cookies)
     info = await journal.info()
     print(f"Page title: {info.page_title}")
     print(f"System error: {info.is_system_error}")

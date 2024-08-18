@@ -79,7 +79,9 @@ def main(ctx: AppContext) -> None:
 @click.pass_context
 def cmd_test_download(ctx: AppContext, journal_id: int) -> None:
     ctx.ensure_object(dict)
-    asyncio.run(test_download(journal_id, ctx.obj["db"]))
+    db = ctx.obj["db"]
+    cookies = ctx.obj["conf"]["fa_cookies"]
+    asyncio.run(test_download(journal_id, db, cookies))
 
 
 @main.command("check-downloads", help="Checks through all downloaded journals, to ensure they can be correctly parsed")
