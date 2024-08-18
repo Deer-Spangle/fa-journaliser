@@ -84,7 +84,13 @@ async def _import_downloaded_journal(db: Database, journal: Journal) -> None:
         await aiofiles.os.remove(journal.journal_html_filename)
 
 
-async def import_downloads(db: Database, repopulate_path: Optional[str], min_id: int, max_id: Optional[int]) -> None:
+async def import_downloads(
+        db: Database,
+        repopulate_path: Optional[str],
+        min_id: int,
+        max_id: Optional[int],
+        concurrent_tasks: int,
+) -> None:
     # List all journal IDs
     journal_ids = [j.journal_id for j in list_journals_truncated(min_id, max_id)]
     logger.info("Total of %s journal files archived", len(journal_ids))
@@ -94,7 +100,7 @@ async def import_downloads(db: Database, repopulate_path: Optional[str], min_id:
         journal_ids = [j for j in journal_ids if j in filter_ids]
         logger.info("Filtered down to %s journals to update", len(journal_ids))
     # Set up a TaskWorker to process journals
-    worker = TaskWorker(5, [
+    worker = TaskWorker(concurrent_tasks, [
         _import_downloaded_journal(db, Journal(journal_id)) for journal_id in journal_ids
     ])
     # Run the worker
