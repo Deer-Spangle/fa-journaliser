@@ -51,6 +51,34 @@ class BadgeInfo:
             "image_url": self.image_url,
         }
 
+    @classmethod
+    def from_img(cls, img_elem: bs4.element.Tag, position: str) -> "BadgeInfo":
+        classes = img_elem["class"]
+        classes = [c for c in classes if c != "userIcon"]
+        return BadgeInfo(
+            position,
+            img_elem.attrs["title"],
+            classes[0],
+            "https://furaffinity.net" + img_elem.attrs["src"],
+        )
+
+
+def parse_badges_from_elem(user_elem: bs4.Tag) -> list[BadgeInfo]:
+    badges = []
+    # Parse badges before the name
+    before_elem = user_elem.select_one("usericon-block-before")
+    if before_elem is not None:
+        badges.extend([
+            BadgeInfo.from_img(img_elem, "before") for img_elem in before_elem.select("img")
+        ])
+    # Parse badges after the name
+    after_elem = user_elem.select_one("usericon-block-after")
+    if after_elem is not None:
+        badges.extend([
+            BadgeInfo.from_img(img_elem, "after") for img_elem in after_elem.select("img")
+        ])
+    return badges
+
 
 @dataclasses.dataclass
 class AuthorInfo:
@@ -76,6 +104,164 @@ class AuthorInfo:
         }
 
 
+@dataclasses.dataclass
+class CommentAuthorInfo:
+    display_name: str
+    username: str
+    avatar_url: str
+    badges: list[BadgeInfo]
+    user_title: str
+
+    def to_dict(self) -> dict:
+        return {
+            "display_name": self.display_name,
+            "username": self.username,
+            "avatar": self.avatar_url,
+            "badges": [b.to_dict() for b in self.badges],
+            "user_title": self.user_title,
+        }
+
+
+class CommentInfo:
+    def __init__(self, elem: bs4.Tag) -> None:
+        self.elem = elem
+
+    @cached_property
+    def comment_id(self) -> int:
+        comment_link = self.elem.select_one("a.comment_anchor")
+        comment_id_attr = comment_link.attrs["id"]
+        if not comment_id_attr.startswith("cid:"):
+            raise ValueError(f"Invalid comment ID: {comment_id_attr}")
+        comment_id = int(comment_id_attr.removeprefix("cid:"))
+        return comment_id
+
+    @cached_property
+    def parent_id(self) -> Optional[int]:
+        anchor_elem = self.elem.select_one("comment-anchor")
+        if anchor_elem is None:
+            return None
+        # The parent link is commented out... why?
+        comment_elem: Optional[bs4.Comment] = None
+        for child_elem in anchor_elem.children:
+            if isinstance(child_elem, bs4.Comment):
+                comment_elem = child_elem
+        if comment_elem is None:
+            return None
+        # Now parse the comment as html...
+        comment_str = str(comment_elem).strip()
+        comment_soup = bs4.BeautifulSoup(comment_str, "html.parser")
+        parent_link = comment_soup.select_one("a.comment-parent")
+        if parent_link is None:
+            return None
+        # Now get the parent ID from the link
+        parent_href = parent_link.attrs["href"]
+        if not parent_href.startswith("#cid:"):
+            raise ValueError(f"Invalid parent href: {parent_href}")
+        parent_id = int(parent_href.removeprefix("#cid:"))
+        return parent_id
+
+    @cached_property
+    def deletion_message(self) -> Optional[str]:
+        deleted_elem = self.elem.select_one("comment-container.deleted-comment-container")
+        if deleted_elem is None:
+            return None
+        comment_text = deleted_elem.select_one("comment-user-text")
+        # Sometimes there is an extra span inside, if it's `[deleted]`
+        span_elem = comment_text.select_one("span.block__deleted_content")
+        if span_elem is not None:
+            return span_elem.string.strip()
+        # Sometimes there is not, if it's `Comment hidden by its owner`
+        return comment_text.string.strip()
+
+    @cached_property
+    def author_avatar(self) -> Optional[str]:
+        avatar = self.elem.select_one("img.comment_useravatar")
+        if avatar is None:
+            return None
+        return "https" + avatar.attrs["src"]
+
+    @cached_property
+    def author_username(self) -> Optional[str]:
+        avatar = self.elem.select_one("img.comment_useravatar")
+        if avatar is None:
+            return None
+        return avatar.attrs["alt"]
+
+    @cached_property
+    def author_display_name(self) -> Optional[str]:
+        display_name_elem = self.elem.select_one("comment-username strong.comment_username")
+        if display_name_elem is None:
+            return None
+        return display_name_elem.string.strip()
+
+    @cached_property
+    def author_badges(self) -> Optional[list[BadgeInfo]]:
+        username_elem = self.elem.select_one("comment-username")
+        badges = parse_badges_from_elem(username_elem)
+        badges = [b for b in badges if b.class_type != "edited-icon"]
+        return badges
+
+    @cached_property
+    def author_title(self) -> Optional[str]:
+        title_elem = self.elem.select_one("comment-title")
+        return title_elem.string.strip()
+
+    @cached_property
+    def author(self) -> Optional[CommentAuthorInfo]:
+        if self.deletion_message is not None:
+            return None
+        return CommentAuthorInfo(
+            self.author_display_name,
+            self.author_username,
+            self.author_avatar,
+            self.author_badges,
+            self.author_title,
+        )
+
+    @cached_property
+    def posted_at(self) -> Optional[datetime.datetime]:
+        if self.deletion_message is not None:
+            return None
+        date_elem = self.elem.select_one("comment-date span.popup_date")
+        if "ago" in date_elem.string:
+            return dateutil.parser.parse(date_elem.attrs["title"])
+        return dateutil.parser.parse(date_elem.string)
+
+    @cached_property
+    def comment_body(self) -> Optional[str]:
+        body_elem = self.elem.select_one("comment-user-text .user-submitted-links")
+        if body_elem is None:
+            return None
+        return body_elem.decode_contents().strip()
+
+    @cached_property
+    def is_op(self) -> bool:
+        op_elem = self.elem.select_one("comment-username span.comment_op_marker")
+        if op_elem is None:
+            return False
+        return True
+
+    @cached_property
+    def edited(self) -> bool:
+        if self.deletion_message is not None:
+            return False
+        username_elem = self.elem.select_one("comment-username")
+        badges = parse_badges_from_elem(username_elem)
+        if "edited-icon" in [b.class_type for b in badges]:
+            return True
+        return False
+
+    def to_dict(self) -> dict:
+        return {
+            "comment_id": self.comment_id,
+            "parent_id": self.parent_id,
+            "deletion_message": self.deletion_message,
+            "author": self.author.to_dict() if self.author is not None else None,
+            "posted_at": self.posted_at.isoformat() if self.posted_at is not None else None,
+            "comment_body": self.comment_body,
+            "is_op": self.is_op,
+            "edited": self.edited,
+        }
 
 
 @dataclasses.dataclass
@@ -281,33 +467,7 @@ class JournalInfo:
         if self.userpage_nav_header is None:
             return None
         username_elem = self.userpage_nav_header.select_one("username")
-        badges = []
-        # Parse badges before the name
-        before_elem = username_elem.select_one("usericon-block-before")
-        if before_elem is not None:
-            for badge_elem in before_elem.select("img"):
-                classes = badge_elem["class"]
-                classes.remove("userIcon")
-                badges.append(BadgeInfo(
-                    "before",
-                    badge_elem.attrs["title"],
-                    classes[0],
-                    "https://furaffinity.net" + badge_elem.attrs["src"],
-                ))
-        # Parse badges after the name
-        after_elem = username_elem.select_one("usericon-block-after")
-        if after_elem is not None:
-            for badge_elem in after_elem.select("img"):
-                classes = badge_elem["class"]
-                classes.remove("userIcon")
-                badges.append(BadgeInfo(
-                    "after",
-                    badge_elem.attrs["title"],
-                    classes[0],
-                    "https://furaffinity.net" + badge_elem.attrs["src"],
-                ))
-        # Return the list
-        return badges
+        return parse_badges_from_elem(username_elem)
 
     @cached_property
     def _author_user_title_elems(self) -> Optional[list[bs4.PageElement]]:
@@ -379,6 +539,36 @@ class JournalInfo:
             return False
         return response_string.strip() == "Comment posting has been disabled by the journal owner."
 
+    @cached_property
+    def comments(self) -> Optional[list[CommentInfo]]:
+        comments_elem = self.soup.select_one("#comments-journal")
+        if comments_elem is None:
+            return None
+        comments: list[CommentInfo] = []
+        for comment_elem in comments_elem.select(".comment_container"):
+            comments.append(CommentInfo(comment_elem))
+        return comments
+
+    @cached_property
+    def num_comments(self) -> int:
+        if self.comments is None:
+            return 0
+        return len(self.comments)
+
+    @cached_property
+    def latest_comment_posted_at(self) -> Optional[datetime.datetime]:
+        latest_datetime = None
+        if self.comments is not None:
+            for comment in self.comments:
+                comment_date = comment.posted_at
+                if comment_date is None:
+                    continue
+                if latest_datetime is None:
+                    latest_datetime = comment_date
+                    continue
+                latest_datetime = max(latest_datetime, comment_date)
+        return latest_datetime
+
     def to_json(self) -> dict:
         return {
             "journal_id": self.journal_id,
@@ -388,6 +578,9 @@ class JournalInfo:
             "journal_footer": self.journal_footer,
             "author": self.author.to_dict() if self.author is not None else None,
             "comments_disabled": self.comments_disabled,
+            "comments": [c.to_dict() for c in self.comments] if self.comments is not None else None,
+            "num_comments": self.num_comments,
+            "latest_comment_posted_at": self.latest_comment_posted_at.isoformat() if self.latest_comment_posted_at is not None else None,
             # TODO: "comments": [
             #    "comment_id": 1234,
             #    "parent_id": None,
