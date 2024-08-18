@@ -1,7 +1,8 @@
+import asyncio
 import glob
 import logging
 from collections import Counter
-from typing import Callable, TypeVar, Optional
+from typing import Callable, TypeVar, Optional, Iterator, Coroutine
 
 import aiofiles.os
 import prometheus_client
@@ -74,6 +75,15 @@ async def check_downloads() -> None:
         print(f"Result: {result}, count: {count}")
 
 
+async def _import_downloaded_journal(db: Database, journal: Journal) -> None:
+    logger.info("Importing journal ID: %s", journal.journal_id)
+    try:
+        await journal.save(db)
+    except RegisteredUsersOnly:
+        logger.warning("Registered users only error page. Deleting")
+        await aiofiles.os.remove(journal.journal_html_filename)
+
+
 async def import_downloads(db: Database, repopulate_path: Optional[str], min_id: int, max_id: Optional[int]) -> None:
     # List all journal IDs
     journal_ids = [j.journal_id for j in list_journals_truncated(min_id, max_id)]
@@ -83,19 +93,33 @@ async def import_downloads(db: Database, repopulate_path: Optional[str], min_id:
         filter_ids = await db.list_ids_where_path_is_null(repopulate_path)
         journal_ids = [j for j in journal_ids if j in filter_ids]
         logger.info("Filtered down to %s journals to update", len(journal_ids))
-    # Go through journals, parsing and importing
-    for journal_id in journal_ids:
-        # Create journal object here, rather than using a list of all journal objects, to avoid memory leak
-        journal = Journal(journal_id)
-
-        logger.info("Journal ID: %s", journal_id)
-        try:
-            await journal.save(db)
-        except RegisteredUsersOnly:
-            logger.warning("Registered users only error page. Deleting")
-            await aiofiles.os.remove(journal.journal_html_filename)
-            continue
+    # Set up a TaskWorker to process journals
+    worker = TaskWorker(5, [
+        _import_downloaded_journal(db, Journal(journal_id)) for journal_id in journal_ids
+    ])
+    # Run the worker
+    await worker.run()
     logger.info("DONE!")
+
+
+class TaskWorker:
+    def __init__(self, concurrent_tasks: int, tasks: list[Coroutine]) -> None:
+        self.concurrent_tasks = concurrent_tasks
+        self.task_queue = asyncio.Queue()
+        for task in tasks:
+            self.task_queue.put_nowait(task)
+
+    async def run(self) -> None:
+        workers = [asyncio.create_task(self.run_worker()) for _ in range(self.concurrent_tasks)]
+        await asyncio.gather(*workers)
+
+    async def run_worker(self) -> None:
+        while True:
+            try:
+                coro = self.task_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                return
+            await coro
 
 
 T = TypeVar("T")
