@@ -2,7 +2,7 @@ import dataclasses
 import datetime
 import re
 from functools import cached_property
-from typing import Optional
+from typing import Optional, TypeVar, Callable
 
 import dateutil.parser
 import bs4
@@ -34,6 +34,17 @@ class DataIncomplete(Exception):
 
 def display_name_to_username(name: str) -> str:
     return name.lower().replace("_", "")
+
+
+T = TypeVar("T")
+
+S = TypeVar("S")
+
+
+def format_if_not_null(elem: Optional[T], format_func: Callable[[T], S]) -> Optional[S]:
+    if elem is None:
+        return None
+    return format_func(elem)
 
 
 @dataclasses.dataclass
@@ -256,8 +267,8 @@ class CommentInfo:
             "comment_id": self.comment_id,
             "parent_id": self.parent_id,
             "deletion_message": self.deletion_message,
-            "author": self.author.to_dict() if self.author is not None else None,
-            "posted_at": self.posted_at.isoformat() if self.posted_at is not None else None,
+            "author": format_if_not_null(self.author, lambda a: a.to_dict()),
+            "posted_at": format_if_not_null(self.posted_at, lambda d: d.isoformat()),
             "comment_body": self.comment_body,
             "is_op": self.is_op,
             "edited": self.edited,
@@ -576,11 +587,11 @@ class JournalInfo:
             "journal_header": self.journal_header,
             "journal_body": self.journal_content,
             "journal_footer": self.journal_footer,
-            "author": self.author.to_dict() if self.author is not None else None,
+            "author": format_if_not_null(self.author, lambda a: a.to_dict()),
             "comments_disabled": self.comments_disabled,
-            "comments": [c.to_dict() for c in self.comments] if self.comments is not None else None,
+            "comments": format_if_not_null(self.comments, lambda comments: [c.to_dict() for c in comments]),
             "num_comments": self.num_comments,
-            "latest_comment_posted_at": self.latest_comment_posted_at.isoformat() if self.latest_comment_posted_at is not None else None,
+            "latest_comment_posted_at": format_if_not_null(self.latest_comment_posted_at, lambda d: d.isoformat()),
             "link": f"https://furaffinity.net/journal/{self.journal_id}/",
             "posted_at": self.posted_at.isoformat(),
         }
