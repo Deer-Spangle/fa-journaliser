@@ -2,7 +2,7 @@ import asyncio
 import glob
 import logging
 from collections import Counter
-from typing import Callable, TypeVar, Optional, Iterator, Coroutine
+from typing import Callable, TypeVar, Optional, Coroutine
 
 import aiofiles.os
 import prometheus_client
