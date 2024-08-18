@@ -138,7 +138,9 @@ class JournalInfo:
         deletion_msg = "The page you are trying to reach is currently pending deletion by a request from its owner."
         if deletion_msg in redirect.stripped_strings:
             return "its owner"
-        deletion_msg = "The page you are trying to reach is currently pending deletion by a request from the administration."
+        deletion_msg = (
+            "The page you are trying to reach is currently pending deletion by a request from the administration."
+        )
         if deletion_msg in redirect.stripped_strings:
             return "the administration"
         return None
@@ -232,7 +234,10 @@ class JournalInfo:
         if potential_prefix in "~-" and username.startswith(potential_username[1:]):
             return potential_prefix
         # Otherwise, oh no
-        raise ValueError(f"Unrecognised status prefix. Username was {username}, but display name suggested it should be {potential_username}")
+        raise ValueError(
+            f"Unrecognised status prefix. Username was {username}, but display name suggested "
+            f"it should be {potential_username}"
+        )
 
     @cached_property
     def author_status_prefix_meaning(self) -> Optional[str]:
