@@ -353,8 +353,8 @@ async def fill_gaps(db: Database, backup_cookies: dict, min_id: int, max_id: Opt
                 logger.info("Found missing journal entry ID: %s, refreshing", missing_id)
                 journal = Journal(missing_id)
                 journal_info = await journal.info()
-                # Re-download any that say the journal was deleted
-                if journal_info.journal_deleted:
+                # Re-download any that say the journal was deleted or that are incomplete files
+                if journal_info.is_data_incomplete or journal_info.journal_deleted:
                     logger.info("This journal page says it was deleted, will re-download")
                     await delete_many([journal])
                     await download_and_save(db, missing_id, backup_cookies)

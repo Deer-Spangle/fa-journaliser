@@ -295,7 +295,7 @@ class JournalInfo:
         return self.soup.select_one("title").string
 
     def check_errors(self) -> None:
-        if "</html>" not in self.raw_content:
+        if self.is_data_incomplete:
             raise DataIncomplete()
         if self.journal_deleted:
             raise JournalNotFound()
@@ -307,6 +307,10 @@ class JournalInfo:
             raise AccountDisabled(f"Account disabled: {self.account_disabled_username}")
         if self.pending_deletion_by:
             raise PendingDeletion(f"Pending deletion from {self.pending_deletion_by}")
+
+    @cached_property
+    def is_data_incomplete(self) -> bool:
+        return "</html>" not in self.raw_content
 
     @cached_property
     def is_system_error(self) -> bool:
