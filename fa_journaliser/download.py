@@ -92,6 +92,10 @@ work_backwards_oldest_id = prometheus_client.Gauge(
     "fajournaliser_work_backwards_oldest_journal_id",
     "The oldest journal ID that has been ingested while working backwards",
 )
+work_backwards_oldest_good_id = prometheus_client.Gauge(
+    "fajournaliser_work_backwards_oldest_good_journal_id",
+    "The oldest journal ID, which isn't an error page, that has been ingested while working backwards",
+)
 
 
 async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> Journal:
@@ -252,6 +256,10 @@ async def work_backwards(
         # Figure out next ID to start from
         current_journal = min(next_journals, key=lambda x: x.journal_id)
         work_backwards_oldest_id.set(current_journal.journal_id)
+        next_infos = await asyncio.gather(*[j.info() for j in next_journals])
+        good_ids = [i.journal_id for i in next_infos if i.journal_deleted]
+        if good_ids:
+            work_backwards_oldest_good_id.set(min(good_ids))
 
 
 async def run_download(
