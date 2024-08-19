@@ -257,7 +257,7 @@ async def work_backwards(
         current_journal = min(next_journals, key=lambda x: x.journal_id)
         work_backwards_oldest_id.set(current_journal.journal_id)
         next_infos = await asyncio.gather(*[j.info() for j in next_journals])
-        good_ids = [i.journal_id for i in next_infos if i.journal_deleted]
+        good_ids = [i.journal_id for i in next_infos if not i.journal_deleted]
         if good_ids:
             work_backwards_oldest_good_id.set(min(good_ids))
 
