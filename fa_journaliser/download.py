@@ -354,7 +354,7 @@ async def fill_gaps(db: Database, backup_cookies: dict, min_id: int, max_id: Opt
                 journal = Journal(missing_id)
                 journal_info = await journal.info()
                 # Re-download any that say the journal was deleted or that are incomplete files
-                if journal_info.is_data_incomplete or journal_info.journal_deleted:
+                if journal_info.is_data_incomplete or journal_info.journal_deleted or journal_info.account_private:
                     logger.info("This journal page says it was deleted, will re-download")
                     await delete_many([journal])
                     await download_and_save(db, missing_id, backup_cookies)
