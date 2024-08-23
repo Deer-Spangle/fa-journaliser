@@ -102,6 +102,9 @@ class Journal:
             error = str(e)
             error_type = type(e)
             logger.info(f"Account pending deletion: {e}")
+        except Exception as e:
+            logger.critical("Failed to parse journal page! %s", self.journal_link, exc_info=e)
+            raise e
         else:
             json_data = json.dumps(info.to_json())
             logger.info("Journal title: %s", info.title)
