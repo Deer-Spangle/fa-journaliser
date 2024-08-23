@@ -10,7 +10,7 @@ import aiofiles.os
 import prometheus_client
 
 from fa_journaliser.database import Database
-from fa_journaliser.journal_info import JournalInfo, JournalNotFound, AccountDisabled, PendingDeletion
+from fa_journaliser.journal_info import JournalInfo, JournalNotFound, AccountDisabled, PendingDeletion, FASystemError
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,10 @@ total_error_counts = prometheus_client.Counter(
 # Initialise for all error types that are saved
 for exc_class in [None, JournalNotFound, AccountDisabled, PendingDeletion]:
     total_error_counts.labels(error_class=exc_class.__name__ if exc_class is not None else "None")
+
+
+BROKEN_JOURNALS = [799264]
+BROKEN_JOURNAL_ERR = "System error: Internal server error."
 
 
 @dataclasses.dataclass
@@ -102,6 +106,16 @@ class Journal:
             error = str(e)
             error_type = type(e)
             logger.info(f"Account pending deletion: {e}")
+        except FASystemError as e:
+            if self.journal_id in BROKEN_JOURNALS and BROKEN_JOURNAL_ERR in str(e):
+                # For some strange reason, this journal does not render, it just returns a 500 server error.
+                is_deleted = True
+                error = BROKEN_JOURNAL_ERR
+                error_type = type(e)
+                logger.info(f"Weird broken journal that causes an FA system error every time: {e}")
+            else:
+                logger.warning("Unknown FASystemError! %s", self.journal_link, exc_info=e)
+                raise e
         except Exception as e:
             logger.critical("Failed to parse journal page! %s", self.journal_link, exc_info=e)
             raise e
