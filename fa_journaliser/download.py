@@ -18,6 +18,8 @@ from fa_journaliser.utils import split_list, total_journal_files, list_journals_
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 5
+PEAK_SLEEP = 60
+PEAK_REGISTERED_CUTOFF = 10_000
 USER_AGENT = "FA-Journaliser/1.0.0 (https://github.com/Deer-Spangle/fa-journaliser contact: fa-journals@spangle.org.uk)"
 
 
@@ -96,6 +98,10 @@ work_backwards_oldest_id = prometheus_client.Gauge(
 work_backwards_oldest_good_id = prometheus_client.Gauge(
     "fajournaliser_work_backwards_oldest_good_journal_id",
     "The oldest journal ID, which isn't an error page, that has been ingested while working backwards",
+)
+peak_time_metric = prometheus_client.Gauge(
+    "fajournaliser_peak_time_active",
+    "Whether peak time is currently active, boolean. Whether there are more than 10k registered users online",
 )
 
 
@@ -236,10 +242,13 @@ async def work_backwards(
         backup_cookies: dict,
         min_id: int = 0,
         batch_size: int = BATCH_SIZE,
+        peak_sleep: int = PEAK_SLEEP,
 ) -> None:
     work_backwards_batch_size.set(batch_size)
     logger.info("Working backwards from %s. I have the easy job", start_journal)
     current_journal = start_journal
+    peak_time_active = True
+    peak_time_metric.set(peak_time_active)
     while True:
         # Figure out next batch
         batch_start = max(min_id, current_journal.journal_id - batch_size)
@@ -261,6 +270,24 @@ async def work_backwards(
         good_ids = [i.journal_id for i in next_infos if not i.journal_deleted]
         if good_ids:
             work_backwards_oldest_good_id.set(min(good_ids))
+        # Figure out if peak time is active
+        registered_counts = [j.site_status.total_registered for j in next_infos if j.site_status is not None]
+        if registered_counts:
+            peak_registered = max(registered_counts)
+            peak_time_active = peak_registered > PEAK_REGISTERED_CUTOFF
+            logger.info(
+                "Site is currently at peak usage hours (%s registered online), will wait %s seconds before next batch",
+                peak_registered,
+                peak_sleep,
+            )
+        else:
+            logger.info(
+                "Can't detect current registered users count, continuing to believe site %s at peak usage hours",
+                "is" if peak_time_active else "is not",
+            )
+        peak_time_metric.set(int(peak_time_active))
+        if peak_time_active:
+            await asyncio.sleep(peak_sleep)
 
 
 async def run_download(

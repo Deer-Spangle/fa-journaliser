@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 START_JOURNAL = 10_923_887
 DEFAULT_BATCH_SIZE = 5
+DEFAULT_PEAK_SLEEP = 60
 PROMETHEUS_PORT = 7074
 
 
@@ -229,8 +230,14 @@ def cmd_work_forwards(ctx: AppContext, start_journal: int, max_journal: Optional
 )
 @click.option("--min-journal", "--min", type=int, help="The ID of the oldest journal to download", default=0)
 @click.option("--batch-size", type=int, help="How many downloads to do at once", default=DEFAULT_BATCH_SIZE)
+@click.option(
+    "--peak-sleep",
+    type=int,
+    help="How many seconds to sleep between batches, during peak times on the site",
+    default=DEFAULT_PEAK_SLEEP,
+)
 @click.pass_context
-def cmd_work_backwards(ctx: AppContext, start_journal: int, min_journal: int, batch_size: int) -> None:
+def cmd_work_backwards(ctx: AppContext, start_journal: int, min_journal: int, batch_size: int, peak_sleep: int) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
@@ -248,6 +255,7 @@ def cmd_work_backwards(ctx: AppContext, start_journal: int, min_journal: int, ba
         cookies,
         min_id=min_journal,
         batch_size=batch_size,
+        peak_sleep=peak_sleep,
     ))
 
 
