@@ -13,11 +13,12 @@ import prometheus_client
 from fa_journaliser.database import Database
 from fa_journaliser.journal import Journal
 from fa_journaliser.journal_info import JournalInfo
-from fa_journaliser.utils import list_downloaded_journals, split_list, total_journal_files, list_journals_truncated
+from fa_journaliser.utils import split_list, total_journal_files, list_journals_truncated
 
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 5
+USER_AGENT = "FA-Journaliser/1.0.0 (https://github.com/Deer-Spangle/fa-journaliser contact: fa-journals@spangle.org.uk)"
 
 
 total_web_requests = prometheus_client.Counter(
@@ -109,7 +110,7 @@ async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> J
     cookie_label = str(cookies is not None)
     # Keep trying to make the web request until it works
     while True:
-        session = aiohttp.ClientSession(cookies=cookies)
+        session = aiohttp.ClientSession(cookies=cookies, headers={"User-Agent": USER_AGENT})
         journal._archive_date = datetime.datetime.now()
         try:
             with web_request_timing_histogram.time():
