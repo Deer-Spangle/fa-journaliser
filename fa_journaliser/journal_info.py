@@ -641,6 +641,8 @@ class JournalInfo:
     def site_status(self) -> Optional[SiteStatusInfo]:
         stats_elem = self.soup.select_one(".online-stats")
         footnote_elem = self.soup.select_one(".footnote")
+        if stats_elem is None or footnote_elem is None:
+            return None
         return SiteStatusInfo(stats_elem, footnote_elem)
 
     def to_json(self) -> dict:
