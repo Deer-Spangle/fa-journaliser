@@ -47,6 +47,59 @@ def format_if_not_null(elem: Optional[T], format_func: Callable[[T], S]) -> Opti
     return format_func(elem)
 
 
+
+@dataclasses.dataclass
+class SiteStatusInfo:
+    def __init__(self, stats_elem: bs4.Tag, footnote_elem: bs4.Tag) -> None:
+        self.stats_elem: bs4.Tag = stats_elem
+        self.footnote_elem: bs4.Tag = footnote_elem
+
+    @cached_property
+    def total_online(self) -> int:
+        strings = list(self.stats_elem.stripped_strings)
+        if strings[1] != "Users online":
+            raise ValueError("Total users online stat is not in the right place")
+        return int(strings[0])
+
+    @cached_property
+    def total_guests(self) -> int:
+        strings = list(self.stats_elem.stripped_strings)
+        if strings[3] != "guests":
+            raise ValueError("Guests online stat is not in the right place")
+        return int(strings[2].removeprefix("—").strip())
+
+    @cached_property
+    def total_registered(self) -> int:
+        strings = list(self.stats_elem.stripped_strings)
+        if strings[5] != "registered":
+            raise ValueError("Registered online stat is not in the right place")
+        return int(strings[4].removeprefix(",").strip())
+
+    @cached_property
+    def total_other(self) -> int:
+        strings = list(self.stats_elem.stripped_strings)
+        if strings[7] != "other":
+            raise ValueError("Other online stat is not in the right place")
+        return int(strings[6].removeprefix("and").strip())
+
+    @cached_property
+    def server_time_at(self) -> datetime.datetime:
+        footnote_str = self.footnote_elem.string.strip().removeprefix("Server Time: ")
+        return dateutil.parser.parse(footnote_str)
+
+    def to_dict(self) -> dict:
+        return {
+            "fa_server_time_at": self.server_time_at.isoformat(),
+            "online": {
+                "total": self.total_online,
+                "guests": self.total_guests,
+                "registered": self.total_registered,
+                "other": self.total_other,
+            }
+        }
+
+
+
 @dataclasses.dataclass
 class BadgeInfo:
     position: str  # before or after
@@ -584,6 +637,12 @@ class JournalInfo:
                 latest_datetime = max(latest_datetime, comment_date)
         return latest_datetime
 
+    @cached_property
+    def site_status(self) -> Optional[SiteStatusInfo]:
+        stats_elem = self.soup.select_one(".online-stats")
+        footnote_elem = self.soup.select_one(".footnote")
+        return SiteStatusInfo(stats_elem, footnote_elem)
+
     def to_json(self) -> dict:
         return {
             "journal_id": self.journal_id,
@@ -598,4 +657,5 @@ class JournalInfo:
             "latest_comment_posted_at": format_if_not_null(self.latest_comment_posted_at, lambda d: d.isoformat()),
             "link": f"https://furaffinity.net/journal/{self.journal_id}/",
             "posted_at": self.posted_at.isoformat(),
+            "site_status": self.site_status.to_dict(),
         }
