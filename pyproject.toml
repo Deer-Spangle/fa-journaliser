@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fa_journaliser"
-version = "0.1.0"
+version = "1.0.0"
 description = "A tool to attempt to archive all journals on FA"
 authors = ["Deer-Spangle <deer@spangle.org.uk>"]
 license = "MIT"
