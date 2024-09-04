@@ -271,7 +271,7 @@ async def work_backwards(
         if good_ids:
             work_backwards_oldest_good_id.set(min(good_ids))
         # Figure out if peak time is active
-        registered_counts = [j.site_status.total_registered for j in next_infos if j.site_status is not None]
+        registered_counts = [j.site_status.registered_online for j in next_infos if j.site_status is not None]
         if registered_counts:
             peak_registered = max(registered_counts)
             peak_time_active = peak_registered > PEAK_REGISTERED_CUTOFF

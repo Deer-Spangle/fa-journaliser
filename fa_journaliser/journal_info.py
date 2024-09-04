@@ -62,21 +62,21 @@ class SiteStatusInfo:
         return int(strings[0])
 
     @cached_property
-    def total_guests(self) -> int:
+    def guests_online(self) -> int:
         strings = list(self.stats_elem.stripped_strings)
         if strings[3] != "guests":
             raise ValueError("Guests online stat is not in the right place")
         return int(strings[2].removeprefix("—").strip())
 
     @cached_property
-    def total_registered(self) -> int:
+    def registered_online(self) -> int:
         strings = list(self.stats_elem.stripped_strings)
         if strings[5] != "registered":
             raise ValueError("Registered online stat is not in the right place")
         return int(strings[4].removeprefix(",").strip())
 
     @cached_property
-    def total_other(self) -> int:
+    def other_online(self) -> int:
         strings = list(self.stats_elem.stripped_strings)
         if strings[7] != "other":
             raise ValueError("Other online stat is not in the right place")
@@ -92,9 +92,9 @@ class SiteStatusInfo:
             "fa_server_time_at": self.server_time_at.isoformat(),
             "online": {
                 "total": self.total_online,
-                "guests": self.total_guests,
-                "registered": self.total_registered,
-                "other": self.total_other,
+                "guests": self.guests_online,
+                "registered": self.registered_online,
+                "other": self.other_online,
             }
         }
 
