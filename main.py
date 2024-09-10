@@ -21,6 +21,7 @@ START_JOURNAL = 10_923_887
 DEFAULT_BATCH_SIZE = 5
 DEFAULT_PEAK_SLEEP = 60
 DEFAULT_EMPTY_BATCH_SLEEP = 300
+DEFAULT_PEAK_USERS_CUTOFF = 10_000
 PROMETHEUS_PORT = 7074
 
 
@@ -178,6 +179,12 @@ def cmd_import_downloads(
          "batch was empty",
     default=DEFAULT_EMPTY_BATCH_SLEEP,
 )
+@click.option(
+    "--peak-users-cutoff",
+    type=int,
+    help="How many registered users online is considered the lower bound for 'peak hours'",
+    default=DEFAULT_PEAK_USERS_CUTOFF,
+)
 @click.pass_context
 def cmd_run_download(
         ctx: AppContext,
@@ -191,6 +198,7 @@ def cmd_run_download(
         forward_peak_sleep: Optional[int],
         backward_peak_sleep: Optional[int],
         forward_empty_batch_sleep: int,
+        peak_users_cutoff: int,
 ) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
@@ -216,6 +224,7 @@ def cmd_run_download(
         forward_peak_sleep=forward_peak_sleep,
         backward_peak_sleep=backward_peak_sleep,
         forward_empty_batch_sleep=forward_empty_batch_sleep,
+        peak_users_cutoff=peak_users_cutoff,
     ))
 
 
@@ -244,6 +253,12 @@ def cmd_run_download(
     help="How many seconds to sleep between batches, during peak times on the site",
     default=DEFAULT_PEAK_SLEEP,
 )
+@click.option(
+    "--peak-users-cutoff",
+    type=int,
+    help="How many registered users online is considered the lower bound for 'peak hours'",
+    default=DEFAULT_PEAK_USERS_CUTOFF,
+)
 @click.pass_context
 def cmd_work_forwards(
         ctx: AppContext,
@@ -251,7 +266,8 @@ def cmd_work_forwards(
         max_journal: Optional[int],
         batch_size: int,
         empty_batch_sleep: int,
-        peak_sleep: int
+        peak_sleep: int,
+        peak_users_cutoff: int,
 ) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
@@ -272,6 +288,7 @@ def cmd_work_forwards(
         batch_size=batch_size,
         peak_sleep=peak_sleep,
         empty_batch_sleep=empty_batch_sleep,
+        peak_users_cutoff=peak_users_cutoff,
     ))
 
 
@@ -294,8 +311,21 @@ def cmd_work_forwards(
     help="How many seconds to sleep between batches, during peak times on the site",
     default=DEFAULT_PEAK_SLEEP,
 )
+@click.option(
+    "--peak-users-cutoff",
+    type=int,
+    help="How many registered users online is considered the lower bound for 'peak hours'",
+    default=DEFAULT_PEAK_USERS_CUTOFF,
+)
 @click.pass_context
-def cmd_work_backwards(ctx: AppContext, start_journal: int, min_journal: int, batch_size: int, peak_sleep: int) -> None:
+def cmd_work_backwards(
+        ctx: AppContext,
+        start_journal: int,
+        min_journal: int,
+        batch_size: int,
+        peak_sleep: int,
+        peak_users_cutoff: int,
+) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
@@ -314,6 +344,7 @@ def cmd_work_backwards(ctx: AppContext, start_journal: int, min_journal: int, ba
         min_id=min_journal,
         batch_size=batch_size,
         peak_sleep=peak_sleep,
+        peak_users_cutoff=peak_users_cutoff,
     ))
 
 

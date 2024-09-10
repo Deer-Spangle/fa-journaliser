@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 BATCH_SIZE = 5
 PEAK_SLEEP = 60
 EMPTY_BATCH_SLEEP = 300
-PEAK_REGISTERED_CUTOFF = 10_000  # TOOD: variable
+PEAK_REGISTERED_CUTOFF = 10_000
 USER_AGENT = "FA-Journaliser/1.0.0 (https://github.com/Deer-Spangle/fa-journaliser contact: fa-journals@spangle.org.uk)"
 
 
@@ -193,6 +193,7 @@ async def work_forwards(
         batch_size: int = BATCH_SIZE,
         peak_sleep: int = PEAK_SLEEP,
         empty_batch_sleep: int = EMPTY_BATCH_SLEEP,
+        peak_users_cutoff: int = PEAK_REGISTERED_CUTOFF,
 ) -> None:
     work_forwards_batch_size.set(batch_size)
     logger.info("Working forwards from %s, this is tricky.", start_journal)
@@ -242,7 +243,7 @@ async def work_forwards(
         saved_ids = [j.journal_id for j in split_on_last_good[True]]
         logger.info("Downloaded new journals: (%s) %s", len(saved_ids), saved_ids)
         # Check if it is peak hours
-        peak_time_active = _peak_time_active(peak_hours_active, next_infos, PEAK_REGISTERED_CUTOFF)
+        peak_time_active = _peak_time_active(peak_hours_active, next_infos, peak_users_cutoff)
         peak_time_metric.set(int(peak_hours_active))
         if peak_time_active:
             logger.info("Peak time active, sleeping %s seconds before next batch", peak_sleep)
@@ -256,6 +257,7 @@ async def work_backwards(
         min_id: int = 0,
         batch_size: int = BATCH_SIZE,
         peak_sleep: int = PEAK_SLEEP,
+        peak_users_cutoff: int = PEAK_REGISTERED_CUTOFF,
 ) -> None:
     work_backwards_batch_size.set(batch_size)
     logger.info("Working backwards from %s. I have the easy job", start_journal)
@@ -284,7 +286,7 @@ async def work_backwards(
         if good_ids:
             work_backwards_oldest_good_id.set(min(good_ids))
         # Figure out if peak time is active
-        peak_time_active = _peak_time_active(peak_time_active, next_infos, PEAK_REGISTERED_CUTOFF)
+        peak_time_active = _peak_time_active(peak_time_active, next_infos, peak_users_cutoff)
         peak_time_metric.set(int(peak_time_active))
         if peak_time_active:
             logger.info("Peak time active, sleeping %s seconds before next batch", peak_sleep)
@@ -302,6 +304,7 @@ async def run_download(
         forward_peak_sleep: int = PEAK_SLEEP,
         backward_peak_sleep: int = PEAK_SLEEP,
         forward_empty_batch_sleep: int = EMPTY_BATCH_SLEEP,
+        peak_users_cutoff: int = PEAK_REGISTERED_CUTOFF,
 ) -> None:
     # List relevant journals
     all_journals = list_journals_truncated(min_id, max_id)
@@ -330,6 +333,7 @@ async def run_download(
         batch_size=forward_batch_size,
         peak_sleep=forward_peak_sleep,
         empty_batch_sleep=forward_empty_batch_sleep,
+        peak_users_cutoff=peak_users_cutoff,
     ))
     task_bkd = asyncio.create_task(work_backwards(
         db,
@@ -338,6 +342,7 @@ async def run_download(
         min_id,
         batch_size=backward_batch_size,
         peak_sleep=backward_peak_sleep,
+        peak_users_cutoff=peak_users_cutoff,
     ))
     await asyncio.gather(task_fwd, task_bkd)
 
