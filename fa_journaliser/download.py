@@ -13,13 +13,14 @@ import prometheus_client
 from fa_journaliser.database import Database
 from fa_journaliser.journal import Journal
 from fa_journaliser.journal_info import JournalInfo
-from fa_journaliser.utils import split_list, total_journal_files, list_journals_truncated
+from fa_journaliser.utils import split_list, total_journal_files, list_journals_truncated, _peak_time_active
 
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 5
 PEAK_SLEEP = 60
-PEAK_REGISTERED_CUTOFF = 10_000
+EMPTY_BATCH_SLEEP = 300
+PEAK_REGISTERED_CUTOFF = 10_000  # TOOD: variable
 USER_AGENT = "FA-Journaliser/1.0.0 (https://github.com/Deer-Spangle/fa-journaliser contact: fa-journals@spangle.org.uk)"
 
 
@@ -190,10 +191,13 @@ async def work_forwards(
         backup_cookies: dict,
         max_id: Optional[int] = None,
         batch_size: int = BATCH_SIZE,
+        peak_sleep: int = PEAK_SLEEP,
+        empty_batch_sleep: int = EMPTY_BATCH_SLEEP,
 ) -> None:
     work_forwards_batch_size.set(batch_size)
     logger.info("Working forwards from %s, this is tricky.", start_journal)
     last_good_id = start_journal.journal_id
+    peak_hours_active = True
     while True:
         await asyncio.sleep(2)
         # Figure out next batch of IDs to try
@@ -215,15 +219,18 @@ async def work_forwards(
         # If none of these journals exist, then wait and try again
         if len(good_journals) == 0:
             work_forwards_empty_batch_count.inc()
-            logger.warning("Didn't get any good new journals in that batch! Gonna wait and retry")
+            logger.warning(
+                "Didn't get any good new journals in that batch! Gonna wait %ss and retry",
+                empty_batch_sleep,
+            )
             await delete_many(next_journals)
-            await asyncio.sleep(30)
+            await asyncio.sleep(empty_batch_sleep)
             continue
         # Convert to list of IDs and figure which is the bleeding edge newest journal
         good_ids = [j.journal_id for j in good_journals]
         last_good_id = max(good_ids)
         work_forwards_last_good_id.set(last_good_id)
-        # Figure out which were before the bleeding edge and which are after
+        # Figure out which were before the bleeding edge and which are after, save the ones which should exist
         split_on_last_good = split_list(next_journals, lambda j: j.journal_id <= last_good_id)
         await asyncio.gather(
             save_many(split_on_last_good[True], db),
@@ -234,6 +241,12 @@ async def work_forwards(
         work_forwards_wasted_downloads.inc(len(split_on_last_good[False]))
         saved_ids = [j.journal_id for j in split_on_last_good[True]]
         logger.info("Downloaded new journals: (%s) %s", len(saved_ids), saved_ids)
+        # Check if it is peak hours
+        peak_time_active = _peak_time_active(peak_hours_active, next_infos, PEAK_REGISTERED_CUTOFF)
+        peak_time_metric.set(int(peak_hours_active))
+        if peak_time_active:
+            logger.info("Peak time active, sleeping %s seconds before next batch", peak_sleep)
+            await asyncio.sleep(peak_sleep)
 
 
 async def work_backwards(
@@ -266,27 +279,15 @@ async def work_backwards(
         # Figure out next ID to start from
         current_journal = min(next_journals, key=lambda x: x.journal_id)
         work_backwards_oldest_id.set(current_journal.journal_id)
-        next_infos = await asyncio.gather(*[j.info() for j in next_journals])
+        next_infos = list(await asyncio.gather(*[j.info() for j in next_journals]))
         good_ids = [i.journal_id for i in next_infos if not i.journal_deleted]
         if good_ids:
             work_backwards_oldest_good_id.set(min(good_ids))
         # Figure out if peak time is active
-        registered_counts = [j.site_status.registered_online for j in next_infos if j.site_status is not None]
-        if registered_counts:
-            peak_registered = max(registered_counts)
-            peak_time_active = peak_registered > PEAK_REGISTERED_CUTOFF
-            logger.info(
-                "Site is currently at peak usage hours (%s registered online), will wait %s seconds before next batch",
-                peak_registered,
-                peak_sleep,
-            )
-        else:
-            logger.info(
-                "Can't detect current registered users count, continuing to believe site %s at peak usage hours",
-                "is" if peak_time_active else "is not",
-            )
+        peak_time_active = _peak_time_active(peak_time_active, next_infos, PEAK_REGISTERED_CUTOFF)
         peak_time_metric.set(int(peak_time_active))
         if peak_time_active:
+            logger.info("Peak time active, sleeping %s seconds before next batch", peak_sleep)
             await asyncio.sleep(peak_sleep)
 
 

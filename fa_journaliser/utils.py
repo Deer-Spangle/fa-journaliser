@@ -8,7 +8,8 @@ import aiofiles.os
 import prometheus_client
 
 from fa_journaliser.database import Database
-from fa_journaliser.journal_info import JournalNotFound, AccountDisabled, PendingDeletion, RegisteredUsersOnly
+from fa_journaliser.journal_info import JournalNotFound, AccountDisabled, PendingDeletion, RegisteredUsersOnly, \
+    JournalInfo
 from fa_journaliser.journal import Journal
 
 
@@ -136,3 +137,21 @@ def split_list(seq: list[T], condition: Callable[[T], bool]) -> dict[bool, list[
     for item in seq:
         result[condition(item)].append(item)
     return result
+
+
+def _peak_time_active(currently_active: bool, journal_infos: list[JournalInfo], peak_cutoff: int) -> bool:
+    registered_counts = [j.site_status.registered_online for j in journal_infos if j.site_status is not None]
+    if not registered_counts:
+        logger.info(
+            "Can't detect current registered users count, continuing to believe site %s at peak usage hours",
+            "is" if currently_active else "is not",
+        )
+        return currently_active
+    peak_registered = max(registered_counts)
+    peak_time_active = peak_registered > peak_cutoff
+    logger.info(
+        "Site is currently at peak usage hours (%s registered online, over %s limit)",
+        peak_registered,
+        peak_cutoff,
+    )
+    return peak_time_active
