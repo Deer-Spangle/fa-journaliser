@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 START_JOURNAL = 10_923_887
 DEFAULT_BATCH_SIZE = 5
 DEFAULT_PEAK_SLEEP = 60
+DEFAULT_EMPTY_BATCH_SLEEP = 300
 PROMETHEUS_PORT = 7074
 
 
@@ -195,8 +196,27 @@ def cmd_run_download(
 )
 @click.option("--max-journal", "--max", type=int, help="The ID of the newest journal to download", default=None)
 @click.option("--batch-size", type=int, help="How many downloads to do at once", default=DEFAULT_BATCH_SIZE)
+@click.option(
+    "--empty-batch-sleep",
+    type=int,
+    help="How many seconds to sleep before fetching the next batch of new journals, if the last batch was empty",
+    default=DEFAULT_EMPTY_BATCH_SLEEP
+)
+@click.option(
+    "--peak-sleep",
+    type=int,
+    help="How many seconds to sleep between batches, during peak times on the site",
+    default=DEFAULT_PEAK_SLEEP,
+)
 @click.pass_context
-def cmd_work_forwards(ctx: AppContext, start_journal: int, max_journal: Optional[int], batch_size: int) -> None:
+def cmd_work_forwards(
+        ctx: AppContext,
+        start_journal: int,
+        max_journal: Optional[int],
+        batch_size: int,
+        empty_batch_sleep: int,
+        peak_sleep: int
+) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
@@ -214,6 +234,8 @@ def cmd_work_forwards(ctx: AppContext, start_journal: int, max_journal: Optional
         cookies,
         max_id=max_journal,
         batch_size=batch_size,
+        peak_sleep=peak_sleep,
+        empty_batch_sleep=empty_batch_sleep,
     ))
 
 
