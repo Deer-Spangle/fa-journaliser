@@ -301,6 +301,7 @@ async def run_download(
         backward_batch_size: int = BATCH_SIZE,
         forward_peak_sleep: int = PEAK_SLEEP,
         backward_peak_sleep: int = PEAK_SLEEP,
+        forward_empty_batch_sleep: int = EMPTY_BATCH_SLEEP,
 ) -> None:
     # List relevant journals
     all_journals = list_journals_truncated(min_id, max_id)
@@ -328,6 +329,7 @@ async def run_download(
         max_id,
         batch_size=forward_batch_size,
         peak_sleep=forward_peak_sleep,
+        empty_batch_sleep=forward_empty_batch_sleep,
     ))
     task_bkd = asyncio.create_task(work_backwards(
         db,

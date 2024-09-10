@@ -171,6 +171,13 @@ def cmd_import_downloads(
     help="How many seconds to sleep between batches when working backwards, during peak times on the site",
     default=None,
 )
+@click.option(
+    "--forward-empty-batch-sleep",
+    type=int,
+    help="How many seconds to sleep before fetching the next batch of new journals, when working forwards, if the last "
+         "batch was empty",
+    default=DEFAULT_EMPTY_BATCH_SLEEP,
+)
 @click.pass_context
 def cmd_run_download(
         ctx: AppContext,
@@ -183,6 +190,7 @@ def cmd_run_download(
         peak_sleep: int,
         forward_peak_sleep: Optional[int],
         backward_peak_sleep: Optional[int],
+        forward_empty_batch_sleep: int,
 ) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
@@ -207,6 +215,7 @@ def cmd_run_download(
         backward_batch_size=backward_batch_size,
         forward_peak_sleep=forward_peak_sleep,
         backward_peak_sleep=backward_peak_sleep,
+        forward_empty_batch_sleep=forward_empty_batch_sleep,
     ))
 
 
