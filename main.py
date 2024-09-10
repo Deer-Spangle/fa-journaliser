@@ -68,7 +68,9 @@ def main(ctx: AppContext) -> None:
         ctx.obj["conf"] = json.load(f)
     # Run the bot
     ctx.obj["db"] = Database()
+    logger.info("Connecting to database")
     asyncio.run(ctx.obj["db"].start())
+    logger.info("Database connection ready")
     startup_time.set_to_current_time()
     start_http_server(PROMETHEUS_PORT)
     ctx.call_on_close(lambda: asyncio.run(ctx.obj["db"].stop()))
