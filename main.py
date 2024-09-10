@@ -153,6 +153,24 @@ def cmd_import_downloads(
     help="How many downloads to do at once working backwards",
     default=None,
 )
+@click.option(
+    "--peak-sleep",
+    type=int,
+    help="How many seconds to sleep between batches, during peak times on the site",
+    default=DEFAULT_PEAK_SLEEP,
+)
+@click.option(
+    "--forward-peak-sleep",
+    type=int,
+    help="How many seconds to sleep between batches when working forwards, during peak times on the site",
+    default=None,
+)
+@click.option(
+    "--backward-peak-sleep",
+    type=int,
+    help="How many seconds to sleep between batches when working backwards, during peak times on the site",
+    default=None,
+)
 @click.pass_context
 def cmd_run_download(
         ctx: AppContext,
@@ -162,6 +180,9 @@ def cmd_run_download(
         batch_size: int,
         forward_batch_size: Optional[int],
         backward_batch_size: Optional[int],
+        peak_sleep: int,
+        forward_peak_sleep: Optional[int],
+        backward_peak_sleep: Optional[int],
 ) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
@@ -171,6 +192,10 @@ def cmd_run_download(
         forward_batch_size = batch_size
     if backward_batch_size is None:
         backward_batch_size = batch_size
+    if forward_peak_sleep is None:
+        forward_peak_sleep = peak_sleep
+    if backward_peak_sleep is None:
+        backward_peak_sleep = peak_sleep
     # Run downloader
     asyncio.run(run_download(
         db,
@@ -180,6 +205,8 @@ def cmd_run_download(
         max_id=max_journal,
         forward_batch_size=forward_batch_size,
         backward_batch_size=backward_batch_size,
+        forward_peak_sleep=forward_peak_sleep,
+        backward_peak_sleep=backward_peak_sleep,
     ))
 
 
