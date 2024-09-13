@@ -150,8 +150,10 @@ def _peak_time_active(currently_active: bool, journal_infos: list[JournalInfo], 
     peak_registered = max(registered_counts)
     peak_time_active = peak_registered > peak_cutoff
     logger.info(
-        "Site is currently at peak usage hours (%s registered online, over %s limit)",
+        "Site %s currently at peak usage hours (%s registered online, %s %s limit)",
+        "is" if peak_time_active else "is not",
         peak_registered,
+        "over" if peak_time_active else "under",
         peak_cutoff,
     )
     return peak_time_active
