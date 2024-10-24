@@ -88,12 +88,17 @@ async def _import_downloaded_journal(db: Database, journal: Journal) -> None:
 async def import_downloads(
         db: Database,
         repopulate_path: Optional[str],
+        from_file: Optional[str],
         min_id: int,
         max_id: Optional[int],
         concurrent_tasks: int,
 ) -> None:
-    # List all journal IDs
-    journal_ids = [j.journal_id for j in list_journals_truncated(min_id, max_id)]
+    if from_file:
+        with open(from_file, "r") as f:
+            journal_ids = [int(line) for line in f.read().split("\n") if line]
+    else:
+        # List all journal IDs
+        journal_ids = [j.journal_id for j in list_journals_truncated(min_id, max_id)]
     logger.info("Total of %s journal files archived", len(journal_ids))
     # If a repopulate path is given, filter down that list
     if repopulate_path:

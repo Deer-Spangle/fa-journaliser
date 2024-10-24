@@ -108,6 +108,12 @@ def cmd_check_downloads(ctx: AppContext) -> None:
          "archive file",
     default=None,
 )
+@click.option(
+    "--from-file",
+    help="If provided, read the specified file for a list of journal IDs to import. Helpful if an external query has "
+         "generated the list of journals to import",
+    default=None,
+)
 @click.option("--min-journal", "--min", type=int, help="The ID of the oldest journal to check", default=0)
 @click.option("--max-journal", "--min", type=int, help="The ID of the newest journal to check", default=None)
 @click.option("--concurrent-tasks", type=int, help="Number of journals to update concurrently", default=5)
@@ -115,6 +121,7 @@ def cmd_check_downloads(ctx: AppContext) -> None:
 def cmd_import_downloads(
         ctx: AppContext,
         repopulate_path: Optional[str],
+        from_file: Optional[str],
         min_journal: int,
         max_journal: Optional[int],
         concurrent_tasks: int,
@@ -122,7 +129,7 @@ def cmd_import_downloads(
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     # Import downloads
-    asyncio.run(import_downloads(db, repopulate_path, min_journal, max_journal, concurrent_tasks))
+    asyncio.run(import_downloads(db, repopulate_path, from_file, min_journal, max_journal, concurrent_tasks))
 
 
 @main.command(
