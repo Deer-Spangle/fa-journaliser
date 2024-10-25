@@ -78,8 +78,9 @@ class Database:
             json_data: Optional[str],
     ) -> None:
         await self.db.execute(
-            "UPDATE journals (is_deleted, archive_datetime, error, login_used, json) "
-            "VALUES (?, ?, ?, ?, ?, ?) WHERE journal_id = ?",
+            "UPDATE journals SET "
+            "is_deleted = ? AND archive_datetime = ? AND error = ? AND login_used = ? AND json = ? "
+            "WHERE journal_id = ?",
             (
                 is_deleted, archive_date, error, login_used, json_data, journal_id
             )
