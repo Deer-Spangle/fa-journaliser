@@ -77,7 +77,8 @@ class Journal:
 
     async def save(
             self,
-            db: Database
+            db: Database,
+            just_update: bool = False,
     ) -> None:
         info = await self.info()
         journal_id = self.journal_id
@@ -122,5 +123,10 @@ class Journal:
         else:
             json_data = json.dumps(info.to_json())
             logger.info("Journal title: %s", info.title)
-        await db.add_entry(journal_id, is_deleted, archive_date, error, login_used, json_data)
+        # Save the journal to the database
+        if just_update:
+            await db.update_entry(journal_id, is_deleted, archive_date, error, login_used, json_data)
+        else:
+            await db.add_entry(journal_id, is_deleted, archive_date, error, login_used, json_data)
+        # Add to the "no errors" metric
         total_error_counts.labels(error_class=error_type.__name__ if error_type is not None else "None").inc()

@@ -119,6 +119,11 @@ def cmd_check_downloads(ctx: AppContext) -> None:
 @click.option("--min-journal", "--min", type=int, help="The ID of the oldest journal to check", default=0)
 @click.option("--max-journal", "--min", type=int, help="The ID of the newest journal to check", default=None)
 @click.option("--concurrent-tasks", type=int, help="Number of journals to update concurrently", default=5)
+@click.option(
+    "--just-update",
+    is_flag=True,
+    help="If set, instruct the database to only use update commands, as opposed to upsert, for speed"
+)
 @click.pass_context
 def cmd_import_downloads(
         ctx: AppContext,
@@ -127,11 +132,20 @@ def cmd_import_downloads(
         min_journal: int,
         max_journal: Optional[int],
         concurrent_tasks: int,
+        just_update: bool
 ) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     # Import downloads
-    asyncio.run(import_downloads(db, repopulate_path, from_file, min_journal, max_journal, concurrent_tasks))
+    asyncio.run(import_downloads(
+        db,
+        repopulate_path,
+        from_file,
+        min_journal,
+        max_journal,
+        concurrent_tasks,
+        just_update,
+    ))
 
 
 @main.command(

@@ -53,7 +53,7 @@ class Database:
             archive_date: datetime.datetime,
             error: Optional[str],
             login_used: Optional[str],
-            json_data: Optional[str]
+            json_data: Optional[str],
     ) -> None:
         await self.db.execute(
             "INSERT INTO journals (journal_id, is_deleted, archive_datetime, error, login_used, json) "
@@ -67,6 +67,24 @@ class Database:
         )
         await self.db.commit()
         total_journal_db_entries.inc(1)
+
+    async def update_entry(
+            self,
+            journal_id: int,
+            is_deleted: bool,
+            archive_date: datetime.datetime,
+            error: Optional[str],
+            login_used: Optional[str],
+            json_data: Optional[str],
+    ) -> None:
+        await self.db.execute(
+            "UPDATE journals (is_deleted, archive_datetime, error, login_used, json) "
+            "VALUES (?, ?, ?, ?, ?, ?) WHERE journal_id = ?",
+            (
+                is_deleted, archive_date, error, login_used, json_data, journal_id
+            )
+        )
+        await self.db.commit()
 
     async def list_journal_ids_truncated(self, min_id: int, max_id: Optional[int]) -> list[int]:
         journal_ids = []

@@ -76,10 +76,10 @@ async def check_downloads() -> None:
         print(f"Result: {result}, count: {count}")
 
 
-async def _import_downloaded_journal(db: Database, journal: Journal) -> None:
+async def _import_downloaded_journal(db: Database, journal: Journal, just_update: bool = False) -> None:
     logger.info("Importing journal ID: %s", journal.journal_id)
     try:
-        await journal.save(db)
+        await journal.save(db, just_update=just_update)
     except RegisteredUsersOnly:
         logger.warning("Registered users only error page. Deleting")
         await aiofiles.os.remove(journal.journal_html_filename)
@@ -92,6 +92,7 @@ async def import_downloads(
         min_id: int,
         max_id: Optional[int],
         concurrent_tasks: int,
+        just_update: bool,
 ) -> None:
     if from_file:
         with open(from_file, "r") as f:
@@ -107,7 +108,7 @@ async def import_downloads(
         logger.info("Filtered down to %s journals to update", len(journal_ids))
     # Set up a TaskWorker to process journals
     worker = TaskWorker(concurrent_tasks, [
-        _import_downloaded_journal(db, Journal(journal_id)) for journal_id in journal_ids
+        _import_downloaded_journal(db, Journal(journal_id), just_update) for journal_id in journal_ids
     ])
     # Run the worker
     await worker.run()
