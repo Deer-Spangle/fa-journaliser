@@ -5,6 +5,7 @@ import aiosqlite
 import prometheus_client
 from aiosqlite import Connection
 
+from fa_journaliser.prom import get_prometheus_port
 
 total_journal_db_entries = prometheus_client.Gauge(
     "fajournaliser_database_journal_entries_total",
@@ -30,8 +31,10 @@ class Database:
             PRIMARY KEY (`journal_id`)
         );""")
         await self.db.commit()
-        entry_count = await self.count_journals()
-        total_journal_db_entries.set(entry_count)
+        # If we're not using prometheus, speed up startup by skipping row count
+        if get_prometheus_port() is not None:
+            entry_count = await self.count_journals()
+            total_journal_db_entries.set(entry_count)
 
     async def stop(self) -> None:
         if self.db is not None:

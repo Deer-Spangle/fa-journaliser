@@ -14,6 +14,7 @@ from fa_journaliser.database import Database
 from fa_journaliser.download import run_download, fill_gaps, test_download, work_forwards, \
     download_if_not_exists, work_backwards
 from fa_journaliser.utils import check_downloads, import_downloads, list_journals_truncated
+from fa_journaliser.prom import get_prometheus_port
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,6 @@ DEFAULT_BATCH_SIZE = 5
 DEFAULT_PEAK_SLEEP = 60
 DEFAULT_EMPTY_BATCH_SLEEP = 300
 DEFAULT_PEAK_USERS_CUTOFF = 10_000
-PROMETHEUS_PORT = 7074
 
 
 startup_time = prometheus_client.Gauge(
@@ -72,7 +72,9 @@ def main(ctx: AppContext) -> None:
     asyncio.run(ctx.obj["db"].start())
     logger.info("Database connection ready")
     startup_time.set_to_current_time()
-    start_http_server(PROMETHEUS_PORT)
+    prometheus_port = get_prometheus_port()
+    if prometheus_port is not None:
+        start_http_server(prometheus_port)
     ctx.call_on_close(lambda: asyncio.run(ctx.obj["db"].stop()))
 
 
