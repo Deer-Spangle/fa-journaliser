@@ -132,7 +132,11 @@ class TaskWorker:
                 coro = self.task_queue.get_nowait()
             except asyncio.QueueEmpty:
                 return
-            await coro
+            try:
+                await coro
+            except Exception as e:
+                logger.critical("Coro failed!", exc_info=e)
+                raise e
 
 
 T = TypeVar("T")
