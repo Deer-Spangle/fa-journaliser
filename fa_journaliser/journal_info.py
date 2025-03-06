@@ -255,7 +255,9 @@ class CommentInfo:
     def author_display_name(self) -> Optional[str]:
         display_name_elem = self.elem.select_one("comment-username strong.comment_username")
         if display_name_elem is None:
-            return None
+            display_name_elem = self.elem.select_one("comment-username .c-usernameBlock__displayName span")
+            if display_name_elem is None:
+                return None
         return display_name_elem.string.strip()
 
     @cached_property
