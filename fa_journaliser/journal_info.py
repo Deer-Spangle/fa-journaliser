@@ -36,6 +36,18 @@ def display_name_to_username(name: str) -> str:
     return name.lower().replace("_", "")
 
 
+def prefix_to_meaning(prefix: str) -> str:
+    return {
+        None: None,
+        "": "",
+        "∞": "Deceased",
+        "!": "Suspended",
+        "~": "Member",
+        "-": "Banned",
+        "@": "Staff",
+    }[prefix]
+
+
 T = TypeVar("T")
 
 S = TypeVar("S")
@@ -523,14 +535,7 @@ class JournalInfo:
 
     @cached_property
     def author_status_prefix_meaning(self) -> Optional[str]:
-        return {
-            None: None,
-            "": "",
-            "∞": "Deceased",
-            "!": "Suspended",
-            "~": "Member",
-            "-": "Banned",
-        }[self.author_status_prefix]
+        return prefix_to_meaning(self.author_status_prefix)
 
     @cached_property
     def author_badges(self) -> Optional[list[BadgeInfo]]:
