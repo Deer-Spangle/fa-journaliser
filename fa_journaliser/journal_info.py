@@ -518,6 +518,10 @@ class JournalInfo:
     def author_display_name(self) -> Optional[str]:
         if self.userpage_nav_header is None:
             return None
+        username_elem = self.userpage_nav_header.select_one(".c-usernameBlock__displayName")
+        if username_elem is not None:
+            display_name = "".join(username_elem.stripped_strings)
+            return display_name
         username_elem = self.userpage_nav_header.select_one("username")
         display_name = "".join(username_elem.stripped_strings)
         prefix = self.author_status_prefix
@@ -529,6 +533,11 @@ class JournalInfo:
     def author_status_prefix(self) -> Optional[str]:
         if self.userpage_nav_header is None:
             return None
+        username_elem = self.userpage_nav_header.select_one(".c-usernameBlock__userName")
+        if username_elem is not None:
+            prefix_elem = username_elem.select_one(".c-usernameBlock__symbol")
+            prefix = "".join(prefix_elem.stripped_strings)
+            return prefix
         username_elem = self.userpage_nav_header.select_one("username")
         display_name = "".join(username_elem.stripped_strings)
         potential_prefix = display_name[0]
