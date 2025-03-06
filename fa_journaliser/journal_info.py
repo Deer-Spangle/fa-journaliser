@@ -185,6 +185,8 @@ class CommentAuthorInfo:
     display_name: str
     username: str
     avatar_url: str
+    status_prefix: str
+    status_prefix_meaning: str
     badges: list[BadgeInfo]
     user_title: str
 
@@ -193,6 +195,8 @@ class CommentAuthorInfo:
             "display_name": self.display_name,
             "username": self.username,
             "avatar": self.avatar_url,
+            "status_prefix": self.status_prefix,
+            "status_prefix_meaning": self.status_prefix_meaning,
             "badges": [b.to_dict() for b in self.badges],
             "user_title": self.user_title,
         }
@@ -273,6 +277,17 @@ class CommentInfo:
         return display_name_elem.string.strip()
 
     @cached_property
+    def author_status_prefix(self) -> Optional[str]:
+        username_elem = self.elem.select_one(".c-usernameBlock__userName")
+        prefix_elem = username_elem.select_one(".c-usernameBlock__symbol")
+        prefix = "".join(prefix_elem.stripped_strings)
+        return prefix
+
+    @cached_property
+    def author_status_prefix_meaning(self) -> Optional[str]:
+        return prefix_to_meaning(self.author_status_prefix)
+
+    @cached_property
     def author_badges(self) -> Optional[list[BadgeInfo]]:
         username_elem = self.elem.select_one("comment-username")
         badges = parse_badges_from_elem(username_elem)
@@ -292,6 +307,8 @@ class CommentInfo:
             self.author_display_name,
             self.author_username,
             self.author_avatar,
+            self.author_status_prefix,
+            self.author_status_prefix_meaning,
             self.author_badges,
             self.author_title,
         )
