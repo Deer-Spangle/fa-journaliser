@@ -354,6 +354,7 @@ async def test_download(journal_id: int, db: Database, cookies: dict) -> None:
     print(f"System error: {info.is_system_error}")
     print(f"Journal deleted: {info.journal_deleted}")
     print(f"Error message: {info.error_message}")
+    info.check_errors()
     print(f"Title: {info.title}")
     print(f"Journal posted: {info.posted_at}")
     print("Journal JSON:")
