@@ -380,7 +380,7 @@ def cmd_work_backwards(
          "they were deleted.",
 )
 @click.option("--min-journal", "--min", type=int, help="The ID of the oldest journal to check", default=0)
-@click.option("--max-journal", "--min", type=int, help="The ID of the newest journal to check", default=None)
+@click.option("--max-journal", "--max", type=int, help="The ID of the newest journal to check", default=None)
 @click.pass_context
 def cmd_fill_gaps(ctx: AppContext, min_journal: 0, max_journal: Optional[int]) -> None:
     ctx.ensure_object(dict)
