@@ -279,6 +279,8 @@ class CommentInfo:
     @cached_property
     def author_status_prefix(self) -> Optional[str]:
         username_elem = self.elem.select_one(".c-usernameBlock__userName")
+        if username_elem is None:
+            return None
         prefix_elem = username_elem.select_one(".c-usernameBlock__symbol")
         prefix = "".join(prefix_elem.stripped_strings)
         return prefix
