@@ -431,7 +431,10 @@ class JournalInfo:
         redirect = notice_message.select_one(".redirect-message")
         if redirect is None:
             return None
-        if "has voluntarily disabled access to their account and all of its contents." in redirect.stripped_strings:
+        if any([
+                "has voluntarily disabled access to their account and all of its contents." in redirect.stripped_strings,
+                "Access has been disabled to the account and contents of user" in redirect.stripped_strings,
+        ]):
             user_link_elem = redirect.select_one(".c-usernameBlockSimple a")
             user_page_link = user_link_elem["href"]
             username = user_page_link.removesuffix("/").removeprefix("/user/")
