@@ -587,17 +587,17 @@ class JournalInfo:
         user_title_elem = self.userpage_nav_header.select_one(".user-title")
         if user_title_elem is None:
             return None
-        title_elems = user_title_elem.contents
-        if len(title_elems) != 3:
-            raise ValueError(f"Could not parse user-title, element does not have 3 children: {title_elems}")
-        return title_elems
+        return user_title_elem.contents
 
     @cached_property
     def author_title(self) -> Optional[str]:
         title_elems = self._author_user_title_elems
         if title_elems is None:
             return None
-        user_title = str(title_elems[0]).strip().removesuffix("|").rstrip()
+        first_elem = str(title_elems[0]).strip()
+        if not first_elem.endswith("|"):
+            raise ValueError("User title does not seem to be in the `.user-title` element")
+        user_title = first_elem.removesuffix("|").rstrip()
         return user_title
 
     @cached_property
@@ -605,6 +605,10 @@ class JournalInfo:
         title_elems = self._author_user_title_elems
         if title_elems is None:
             return None
+        non_empty_elems = [e for e in title_elems if str(e).strip() != ""]
+        registered_elem = non_empty_elems[-1]
+        if isinstance(registered_elem, bs4.element.Tag):
+            return datetime.datetime.fromtimestamp(int(registered_elem.attrs["data-time"]))
         registered_str = str(title_elems[-1]).strip()
         return dateutil.parser.parse(registered_str)
 
