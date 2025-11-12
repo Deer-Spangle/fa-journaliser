@@ -6,6 +6,7 @@ from typing import Optional, TypeVar, Callable
 
 import dateutil.parser
 import bs4
+from bs4 import Tag
 
 
 class JournalNotFound(Exception):
@@ -594,10 +595,12 @@ class JournalInfo:
         title_elems = self._author_user_title_elems
         if title_elems is None:
             return None
-        first_elem = str(title_elems[0]).strip()
-        if not first_elem.endswith("|"):
+        first_elem_text = str(title_elems[0]).strip()
+        if first_elem_text == "":
+            return None
+        if not first_elem_text.endswith("|"):
             raise ValueError("User title does not seem to be in the `.user-title` element")
-        user_title = first_elem.removesuffix("|").rstrip()
+        user_title = first_elem_text.removesuffix("|").rstrip()
         return user_title
 
     @cached_property
