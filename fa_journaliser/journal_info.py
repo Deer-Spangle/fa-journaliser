@@ -491,7 +491,10 @@ class JournalInfo:
 
     @cached_property
     def title(self) -> str:
-        return self.content.select_one(".journal-title").string
+        old_elem = self.content.select_one(".journal-title")
+        if old_elem is not None:
+            return old_elem.string
+        return self.content.select_one("#c-journalTitleTop__subject").string
 
     @cached_property
     def posted_at(self) -> datetime.datetime:
