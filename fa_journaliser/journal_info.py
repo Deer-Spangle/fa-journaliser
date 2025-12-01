@@ -698,6 +698,16 @@ class JournalInfo:
             return None
         return SiteStatusInfo(stats_elem, footnote_elem)
 
+    @cached_property
+    def rating(self) -> Optional[str]:
+        rating_elem = self.soup.select_one("#c-journalTitleTop__contentRating")
+        if rating_elem is None:
+            return None
+        rating_str = rating_elem.string
+        if rating_str not in ["General", "Mature", "Adult"]:
+            raise ValueError(f"Unrecognised rating: {rating_str}")
+        return rating_str
+
     def to_json(self) -> dict:
         return {
             "journal_id": self.journal_id,
@@ -706,6 +716,7 @@ class JournalInfo:
             "journal_body": self.journal_content,
             "journal_footer": self.journal_footer,
             "author": format_if_not_null(self.author, lambda a: a.to_dict()),
+            "rating": self.rating,
             "comments_disabled": self.comments_disabled,
             "comments": format_if_not_null(self.comments, lambda comments: [c.to_dict() for c in comments]),
             "num_comments": self.num_comments,
