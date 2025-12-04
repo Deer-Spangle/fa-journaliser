@@ -148,7 +148,7 @@ async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> J
 async def download_journal_with_backup_cookies(journal_id: int, cookies: dict) -> Journal:
     journal = await download_journal(journal_id)
     info = await journal.info()
-    if info.account_private:
+    if info.account_private or info.rating_needs_login:
         journal = await download_journal(journal_id, cookies)
     total_downloaded_journals.labels(needed_login=str(info.account_private)).inc()
     total_journal_files.inc()

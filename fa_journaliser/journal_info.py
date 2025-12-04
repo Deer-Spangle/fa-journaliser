@@ -29,6 +29,10 @@ class PendingDeletion(Exception):
     pass
 
 
+class RatingNeedsLogin(Exception):
+    pass
+
+
 class DataIncomplete(Exception):
     pass
 
@@ -394,6 +398,8 @@ class JournalInfo:
             raise AccountDisabled(f"Account disabled: {self.account_disabled_username}")
         if self.pending_deletion_by:
             raise PendingDeletion(f"Pending deletion from {self.pending_deletion_by}")
+        if self.rating_needs_login:
+            raise RatingNeedsLogin()
 
     @cached_property
     def is_data_incomplete(self) -> bool:
@@ -466,6 +472,18 @@ class JournalInfo:
         if deletion_msg in redirect.stripped_strings:
             return "the administration"
         return None
+
+    @cached_property
+    def rating_needs_login(self) -> bool:
+        if self.site_content is None:
+            return False
+        notice_message = self.site_content.select_one("section.notice-message")
+        if notice_message is None:
+            return False
+        section_body = notice_message.select_one(".section-body")
+        if section_body is None:
+            return False
+        return "This content is rated Mature or Adult. To view this content, you must log in and enable the Mature or Adult content via Account Settings." in section_body.stripped_strings
 
     @cached_property
     def error_message(self) -> Optional[str]:
