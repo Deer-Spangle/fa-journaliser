@@ -1,0 +1,13 @@
+
+# Python project
+.idea/
+__pycache__/
+venv/
+
+# Archiver config
+config.json
+
+# Archiver data
+logs/
+store/
+journals.db
