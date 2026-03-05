@@ -13,6 +13,14 @@ class JournalNotFound(Exception):
     pass
 
 
+class RetryRequestError(Exception):
+    pass
+
+
+class RetryExceededError(Exception):
+    pass
+
+
 class FASystemError(Exception):
     pass
 
@@ -390,6 +398,8 @@ class JournalInfo:
             raise DataIncomplete()
         if self.journal_deleted:
             raise JournalNotFound()
+        if self.retry_request_error:
+            raise RetryRequestError()
         if self.is_system_error:
             raise FASystemError(f"System error: {self.error_message}")
         if self.account_private:
@@ -413,6 +423,12 @@ class JournalInfo:
     def journal_deleted(self) -> bool:
         if self.is_system_error:
             return "The journal you are trying to find is not in our database." in self.error_message
+        return False
+
+    @cached_property
+    def retry_request_error(self) -> bool:
+        if self.is_system_error:
+            return "Internal server error. Please retry your request." in self.error_message
         return False
 
     @cached_property

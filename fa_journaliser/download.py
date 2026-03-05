@@ -12,7 +12,7 @@ import prometheus_client
 
 from fa_journaliser.database import Database
 from fa_journaliser.journal import Journal
-from fa_journaliser.journal_info import JournalInfo
+from fa_journaliser.journal_info import JournalInfo, RetryExceededError
 from fa_journaliser.utils import split_list, total_journal_files, list_journals_truncated, _peak_time_active
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,8 @@ PEAK_SLEEP = 60
 EMPTY_BATCH_SLEEP = 300
 PEAK_REGISTERED_CUTOFF = 10_000
 USER_AGENT = "FA-Journaliser/1.0.0 (https://github.com/Deer-Spangle/fa-journaliser contact: fa-journals@spangle.org.uk)"
+RETRY_SLEEP = 20
+RETRY_COUNT = 5
 
 
 total_web_requests = prometheus_client.Counter(
@@ -146,13 +148,27 @@ async def download_journal(journal_id: int, cookies: Optional[dict] = None) -> J
 
 
 async def download_journal_with_backup_cookies(journal_id: int, cookies: dict) -> Journal:
-    journal = await download_journal(journal_id)
-    info = await journal.info()
-    if info.account_private or info.rating_needs_login:
-        journal = await download_journal(journal_id, cookies)
-    total_downloaded_journals.labels(needed_login=str(info.account_private)).inc()
-    total_journal_files.inc()
-    return journal
+    retry_idx = 0
+    while retry_idx < RETRY_COUNT:
+        journal = await download_journal(journal_id)
+        info = await journal.info()
+        if info.retry_request_error:
+            logger.warning("Received retry request error, will retry in %s seconds", RETRY_SLEEP)
+            retry_idx += 1
+            await asyncio.sleep(RETRY_SLEEP)
+            continue
+        if info.account_private or info.rating_needs_login:
+            journal = await download_journal(journal_id, cookies)
+            info = await journal.info()
+            if info.retry_request_error:
+                logger.warning("Received retry request error, will retry in %s seconds", RETRY_SLEEP)
+                retry_idx += 1
+                await asyncio.sleep(RETRY_SLEEP)
+                continue
+        total_downloaded_journals.labels(needed_login=str(info.account_private)).inc()
+        total_journal_files.inc()
+        return journal
+    raise RetryExceededError(f"Attempted to download journal ID {journal_id} {retry_idx} times, but continued to get retry errors")
 
 
 async def download_and_save(db: Database, journal_id: int, cookies: dict) -> Journal:
@@ -407,7 +423,7 @@ async def fill_gaps(db: Database, backup_cookies: dict, min_id: int, max_id: Opt
                 journal = Journal(missing_id)
                 journal_info = await journal.info()
                 # Re-download any that say the journal was deleted or that are incomplete files
-                if journal_info.is_data_incomplete or journal_info.journal_deleted or journal_info.account_private:
+                if journal_info.is_data_incomplete or journal_info.journal_deleted or journal_info.account_private or journal_info.retry_request_error:
                     logger.info("This journal page says it was deleted, will re-download")
                     await delete_many([journal])
                     await download_and_save(db, missing_id, backup_cookies)

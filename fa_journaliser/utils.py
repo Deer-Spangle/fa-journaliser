@@ -9,7 +9,7 @@ import prometheus_client
 
 from fa_journaliser.database import Database
 from fa_journaliser.journal_info import JournalNotFound, AccountDisabled, PendingDeletion, RegisteredUsersOnly, \
-    JournalInfo
+    JournalInfo, RetryRequestError
 from fa_journaliser.journal import Journal
 
 
@@ -82,6 +82,9 @@ async def _import_downloaded_journal(db: Database, journal: Journal, just_update
         await journal.save(db, just_update=just_update)
     except RegisteredUsersOnly:
         logger.warning("Registered users only error page. Deleting")
+        await aiofiles.os.remove(journal.journal_html_filename)
+    except RetryRequestError:
+        logger.warning("Retry request error page. Deleting")
         await aiofiles.os.remove(journal.journal_html_filename)
 
 
