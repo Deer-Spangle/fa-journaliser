@@ -83,12 +83,19 @@ def main(ctx: AppContext) -> None:
     help="Download and save a single journal, printing information about it, to validate the downloader",
 )
 @click.option("--journal-id", type=int, required=True, help="ID of the journal to download and test")
+@click.option("--repeat", type=int, default=1, help="How many times to repeat fetching the journal")
 @click.pass_context
-def cmd_test_download(ctx: AppContext, journal_id: int) -> None:
+def cmd_test_download(ctx: AppContext, journal_id: int, repeat: int) -> None:
     ctx.ensure_object(dict)
     db = ctx.obj["db"]
     cookies = ctx.obj["conf"]["fa_cookies"]
-    asyncio.run(test_download(journal_id, db, cookies))
+    for i in range(repeat):
+        if repeat > 1:
+            logger.info("Fetch attempt %s of %s", i, repeat)
+        try:
+            asyncio.run(test_download(journal_id, db, cookies))
+        except Exception as e:
+            logger.warning("Exception during download test", exc_info=e)
 
 
 @main.command("check-downloads", help="Checks through all downloaded journals, to ensure they can be correctly parsed")
