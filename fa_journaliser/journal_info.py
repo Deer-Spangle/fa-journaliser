@@ -129,7 +129,7 @@ class SiteStatusInfo:
 class BadgeInfo:
     position: str  # before or after
     title: str
-    class_type: str
+    class_type: Optional[str]
     image_url: str
 
     def to_dict(self) -> dict:
@@ -142,13 +142,20 @@ class BadgeInfo:
 
     @classmethod
     def from_img(cls, img_elem: bs4.element.Tag, position: str) -> "BadgeInfo":
-        classes = img_elem["class"]
-        classes = [c for c in classes if c != "userIcon"]
+        classes = [c for c in img_elem["class"] if c != "userIcon"]
+        img_class = None
+        if len(classes) > 0:
+            img_class = classes[0]
+        img_src = img_elem.attrs["src"]
+        if img_src.startswith("//"):
+            img_src = "https" + img_src
+        if img_src.startswith("/"):
+            img_src = "https://furaffinity.net" + img_src
         return BadgeInfo(
             position,
             img_elem.attrs["title"],
-            classes[0],
-            "https://furaffinity.net" + img_elem.attrs["src"],
+            img_class,
+            img_src,
         )
 
 
