@@ -366,6 +366,7 @@ async def run_download(
 async def test_download(journal_id: int, db: Database, cookies: dict) -> None:
     journal = await download_journal_with_backup_cookies(journal_id, cookies)
     info = await journal.info()
+    print(f"Journal link: {journal.journal_link}")
     print(f"Page title: {info.page_title}")
     print(f"System error: {info.is_system_error}")
     print(f"Journal deleted: {info.journal_deleted}")
