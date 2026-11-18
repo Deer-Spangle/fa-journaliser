@@ -109,7 +109,7 @@ class SiteStatusInfo:
 
     @cached_property
     def server_time_at(self) -> datetime.datetime:
-        footnote_str = self.footnote_elem.string.strip().removeprefix("Server Time: ")
+        footnote_str = self.footnote_elem.contents[0].strip().removeprefix("Server Time: ")
         return dateutil.parser.parse(footnote_str)
 
     def to_dict(self) -> dict:
