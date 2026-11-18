@@ -646,9 +646,11 @@ class JournalInfo:
         if title_elems is None:
             return None
         non_empty_elems = [e for e in title_elems if str(e).strip() != ""]
-        registered_elem = non_empty_elems[-1]
-        if isinstance(registered_elem, bs4.element.Tag):
-            return datetime.datetime.fromtimestamp(int(registered_elem.attrs["data-time"]))
+        for elem in non_empty_elems:
+            if isinstance(elem, bs4.element.Tag):
+                if elem.attrs["class"] == ["popup_date"]:
+                    date_timestamp = elem.attrs["data-time"]
+                    return datetime.datetime.fromtimestamp(int(date_timestamp))
         registered_str = str(title_elems[-1]).strip()
         return dateutil.parser.parse(registered_str)
 
