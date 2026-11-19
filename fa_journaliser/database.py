@@ -138,10 +138,10 @@ class Database:
         database_shards.set_function(lambda: len(self.shards))
 
     async def start(self) -> None:
-        db_files = glob.glob("journals_*.db")
+        db_files = glob.glob("store/journals_*.db")
         async with self.sharding_lock:
             for db_file in db_files:
-                db_number = db_file.removeprefix("journals_").removesuffix(".db")
+                db_number = db_file.removeprefix("store/journals_").removesuffix(".db")
                 min_id = int(db_number) * self.SHARD_SIZE
                 max_id = min_id + self.SHARD_SIZE
                 new_db = RawDatabase(db_file)
@@ -180,7 +180,7 @@ class Database:
             logger.info("Journal ID %s is not captured by any of the existing Database shards. Creating a new one", journal_id)
             min_id = journal_id - (journal_id % self.SHARD_SIZE)
             max_id = min_id + self.SHARD_SIZE
-            filename = f"journals_{min_id//self.SHARD_SIZE}.db"
+            filename = f"store/journals_{min_id//self.SHARD_SIZE}.db"
             new_db = RawDatabase(filename)
             await new_db.start()
             logger.info("Connected to new database shard: %s", filename)
