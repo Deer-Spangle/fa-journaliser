@@ -670,6 +670,8 @@ class JournalInfo:
             return None
         non_empty_elems = [e for e in title_elems if str(e).strip() != ""]
         for elem in non_empty_elems:
+            if not isinstance(elem, bs4.element.Tag):
+                continue
             link_elem = elem.select_one("a")
             if link_elem is None:
                 continue
