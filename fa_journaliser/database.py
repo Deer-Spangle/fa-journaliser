@@ -190,9 +190,12 @@ class Database:
             return shard
 
     async def count_journals(self) -> int:
+        logger.debug("Counting journals across all shards")
         total_count = 0
         for shard in self.shards:
+            logger.debug("Counting journals in shard: %s", shard.db.filename)
             total_count += await shard.db.count_journals()
+        logger.debug("Counted %s journals", total_count)
         return total_count
 
     async def add_entry(
@@ -205,6 +208,7 @@ class Database:
             json_data: Optional[str],
     ) -> None:
         shard = await self._select_shard(journal_id)
+        logger.debug("Adding journal ID %s to shard %s", journal_id, shard.db.filename)
         await shard.db.add_entry(
             journal_id=journal_id,
             is_deleted=is_deleted,
@@ -224,6 +228,7 @@ class Database:
             json_data: Optional[str],
     ) -> None:
         shard = await self._select_shard(journal_id)
+        logger.debug("Updating journal ID %s in shard %s", journal_id, shard.db.filename)
         return await shard.db.update_entry(
             journal_id=journal_id,
             is_deleted=is_deleted,
@@ -251,6 +256,7 @@ class Database:
                 next_shard = await self._select_shard(next_shard.max_id)
                 check_shards.append(next_shard)
         # Now search each shard, and return the collated list
+        logger.debug("Listing journal IDs across %s shards", len(check_shards))
         journal_ids: list[int] = []
         for shard in check_shards:
             shard_min = max(min_id, shard.min_id)
@@ -258,11 +264,13 @@ class Database:
                 shard_max = shard.max_id - 1
             else:
                 shard_max = min(max_id, shard.max_id-1)
+            logger.debug("Listing journal IDs in shard: %s", shard.db.filename)
             journal_ids.extend(await shard.db.list_journal_ids_truncated(shard_min, shard_max))
         return journal_ids
 
     async def list_ids_where_path_is_null(self, json_path: str) -> list[int]:
         journal_ids = []
         for shard in self.shards:
+            logger.debug("Listing journal IDs in shard %s where path %s is null", shard.db.filename, json_path)
             journal_ids.extend(await shard.db.list_ids_where_path_is_null(json_path))
         return journal_ids
