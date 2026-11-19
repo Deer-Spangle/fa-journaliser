@@ -63,6 +63,7 @@ def main(ctx: AppContext) -> None:
     ctx.ensure_object(dict)
     # Setup logging
     setup_logging()
+    logger.info("Running command: %s", ctx.invoked_subcommand)
     # Load config
     with open("config.json", "r") as f:
         ctx.obj["conf"] = json.load(f)
@@ -75,6 +76,7 @@ def main(ctx: AppContext) -> None:
     prometheus_port = get_prometheus_port()
     if prometheus_port is not None:
         start_http_server(prometheus_port)
+    # TODO: this is running after event loop closes :(
     ctx.call_on_close(lambda: asyncio.run(ctx.obj["db"].stop()))
 
 
