@@ -186,6 +186,7 @@ class AuthorInfo:
     badges: list[BadgeInfo]
     user_title: Optional[str]
     registered_at: Optional[datetime.datetime]
+    uuid: Optional[str]
 
     def to_dict(self) -> dict:
         return {
@@ -197,6 +198,7 @@ class AuthorInfo:
             "badges": [b.to_dict() for b in self.badges],
             "user_title": self.user_title,
             "registered_at": self.registered_at.isoformat(),
+            "uuid": self.uuid,
         }
 
 
@@ -662,6 +664,21 @@ class JournalInfo:
         return dateutil.parser.parse(registered_str)
 
     @cached_property
+    def author_uuid(self) -> Optional[str]:
+        title_elems = self._author_user_title_elems
+        if title_elems is None:
+            return None
+        non_empty_elems = [e for e in title_elems if str(e).strip() != ""]
+        for elem in non_empty_elems:
+            link_elem = elem.select_one("a")
+            if link_elem is None:
+                continue
+            link_href = link_elem.attrs["href"]
+            if link_href.startswith("/user/id:"):
+                return link_href.removeprefix("/user/id:")
+        return None
+
+    @cached_property
     def author_username(self) -> Optional[str]:
         if self.userpage_nav_header is None:
             return None
@@ -689,6 +706,7 @@ class JournalInfo:
             self.author_badges,
             self.author_title,
             self.author_registered_at,
+            self.author_uuid,
         )
 
     @cached_property
