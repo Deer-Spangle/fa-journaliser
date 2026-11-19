@@ -77,6 +77,10 @@ work_forwards_last_good_id = prometheus_client.Gauge(
     "fajournaliser_work_forwards_last_good_journal_id",
     "The newest journal ID that has been ingested while working forwards",
 )
+work_forwards_last_good_date = prometheus_client.Gauge(
+    "fajournaliser_work_forwards_last_good_date_unix_timestamp",
+    "The unix timestamp of the newest journal which has been ingested while working forwards",
+)
 work_forwards_total_new_journals = prometheus_client.Counter(
     "fajournaliser_work_forwards_total_new_journals",
     "Count of how many new journal pages were archived while working forwards",
@@ -211,9 +215,19 @@ async def work_forwards(
         empty_batch_sleep: int = EMPTY_BATCH_SLEEP,
         peak_users_cutoff: int = PEAK_REGISTERED_CUTOFF,
 ) -> None:
+    base_batch_size = batch_size
     work_forwards_batch_size.set(batch_size)
     logger.info("Working forwards from %s, this is tricky.", start_journal)
     last_good_id = start_journal.journal_id
+    # Figure out the last date, so we can determine whether we've caught up. No worries if not though
+    start_journal_info = await start_journal.info()
+    last_good_date: Optional[datetime.datetime] = None
+    try:
+        start_journal_info.check_errors()
+        last_good_date = start_journal_info.posted_at
+    except:
+        pass
+    # If peak hours are active, slow down the rechecks
     peak_hours_active = True
     while True:
         await asyncio.sleep(2)
@@ -241,12 +255,34 @@ async def work_forwards(
                 empty_batch_sleep,
             )
             await delete_many(next_journals)
+            # If we're definitely behind, then let's expand the batch size
+            if last_good_date is not None:
+                now = datetime.datetime.now()
+                if (now - last_good_date) > datetime.timedelta(days=1):
+                    batch_size += base_batch_size
+                    batch_size = min(batch_size, 10*base_batch_size)
+                    logger.info("Last batch was empty, but latest journal is old. Expanding batch size to %s and retrying", batch_size)
+                    continue
+            # Otherwise, sleep and wait
             await asyncio.sleep(empty_batch_sleep)
             continue
+        # If we found journals, leave searching mode and set batch size back to normal
+        batch_size = base_batch_size
         # Convert to list of IDs and figure which is the bleeding edge newest journal
         good_ids = [j.journal_id for j in good_journals]
         last_good_id = max(good_ids)
         work_forwards_last_good_id.set(last_good_id)
+        # Determine whether the last one has a date
+        last_good_journal = next(iter([j for j in good_journals if j.journal_id == last_good_id]), None)
+        if last_good_journal is not None:
+            try:
+                last_good_journal.check_errors()
+                last_good_journal_info = await last_good_journal.info()
+                last_good_date = last_good_journal_info.posted_at
+                if last_good_date is not None:
+                    work_forwards_last_good_date.set(last_good_date.timestamp())
+            except:
+                pass
         # Figure out which were before the bleeding edge and which are after, save the ones which should exist
         split_on_last_good = split_list(next_journals, lambda j: j.journal_id <= last_good_id)
         await asyncio.gather(
