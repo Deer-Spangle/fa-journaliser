@@ -27,7 +27,7 @@ connected_database_shards = prometheus_client.Gauge(
 )
 
 
-class Database:
+class RawDatabase:
 
     def __init__(self, filename = "journals.db") -> None:
         self.filename: str = filename
@@ -124,13 +124,13 @@ class Database:
 
 
 class DBShard:
-    def __init__(self, db: Database, min_id: int, max_id: int) -> None:
-        self.db: Database = db
+    def __init__(self, db: RawDatabase, min_id: int, max_id: int) -> None:
+        self.db: RawDatabase = db
         self.min_id: int = min_id
         self.max_id: int = max_id # Not inclusive!
 
 
-class ShardedDatabase:
+class Database:
     SHARD_SIZE = 1_000_000
     def __init__(self) -> None:
         self.shards: list[DBShard] = []
@@ -144,7 +144,7 @@ class ShardedDatabase:
                 db_number = db_file.removeprefix("journals_").removesuffix(".db")
                 min_id = int(db_number) * self.SHARD_SIZE
                 max_id = min_id + self.SHARD_SIZE
-                new_db = Database(db_file)
+                new_db = RawDatabase(db_file)
                 logger.info("Connecting to database shard: %s", db_file)
                 await new_db.start()
                 connected_database_shards.inc(1)
@@ -181,8 +181,9 @@ class ShardedDatabase:
             min_id = journal_id - (journal_id % self.SHARD_SIZE)
             max_id = min_id + self.SHARD_SIZE
             filename = f"journals_{min_id//self.SHARD_SIZE}.db"
-            new_db = Database(filename)
+            new_db = RawDatabase(filename)
             await new_db.start()
+            logger.info("Connected to new database shard: %s", filename)
             connected_database_shards.inc(1)
             shard = DBShard(new_db, min_id, max_id)
             self.shards.append(shard)
