@@ -276,8 +276,8 @@ async def work_forwards(
         last_good_journal = next(iter([j for j in good_journals if j.journal_id == last_good_id]), None)
         if last_good_journal is not None:
             try:
-                last_good_journal.check_errors()
                 last_good_journal_info = await last_good_journal.info()
+                last_good_journal_info.check_errors()
                 last_good_date = last_good_journal_info.posted_at
                 if last_good_date is not None:
                     work_forwards_last_good_date.set(last_good_date.timestamp())
