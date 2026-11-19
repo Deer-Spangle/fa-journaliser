@@ -49,7 +49,7 @@ class RawDatabase:
         # If we're not using prometheus, speed up startup by skipping row count
         if get_prometheus_port() is not None:
             entry_count = await self.count_journals()
-            total_journal_db_entries.set(entry_count)
+            total_journal_db_entries.inc(entry_count)
 
     async def stop(self) -> None:
         if self.db is not None:
