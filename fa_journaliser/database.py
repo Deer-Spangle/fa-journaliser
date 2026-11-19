@@ -167,7 +167,7 @@ class Database:
                 return shard
         return None
 
-    async def select_shard(self, journal_id: int) -> DBShard:
+    async def _select_shard(self, journal_id: int) -> DBShard:
         shard = self._find_matching_shard(journal_id)
         if shard is not None:
             return shard
@@ -204,7 +204,7 @@ class Database:
             login_used: Optional[str],
             json_data: Optional[str],
     ) -> None:
-        shard = await self.select_shard(journal_id)
+        shard = await self._select_shard(journal_id)
         await shard.db.add_entry(
             journal_id=journal_id,
             is_deleted=is_deleted,
@@ -223,7 +223,7 @@ class Database:
             login_used: Optional[str],
             json_data: Optional[str],
     ) -> None:
-        shard = await self.select_shard(journal_id)
+        shard = await self._select_shard(journal_id)
         return await shard.db.update_entry(
             journal_id=journal_id,
             is_deleted=is_deleted,
@@ -236,7 +236,7 @@ class Database:
     async def list_journal_ids_truncated(self, min_id: int, max_id: Optional[int]) -> list[int]:
         # Figure out which shards need asking
         check_shards: list[DBShard] = []
-        min_shard = await self.select_shard(min_id)
+        min_shard = await self._select_shard(min_id)
         check_shards.append(min_shard)
         if max_id is None:
             # If there's no max ID, add more shards until we don't find anymore
@@ -248,7 +248,7 @@ class Database:
             # If there is a max ID, keep requesting new shards until we reach the max ID
             next_shard = min_shard
             while max_id < next_shard.max_id:
-                next_shard = await self.select_shard(next_shard.max_id)
+                next_shard = await self._select_shard(next_shard.max_id)
                 check_shards.append(next_shard)
         # Now search each shard, and return the collated list
         journal_ids: list[int] = []
